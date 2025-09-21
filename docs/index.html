@@ -1,11 +1,5 @@
-<!-- halaman lodin -->
-
-<!-- require_once __DIR__ . '/../inc/config.php'; // session_start(); // if (isset($_POST['login'])) { // $u = trim($_POST['username']); // $p = $_POST['password']; // $stmt = $pdo->prepare("SELECT * FROM users WHERE username = :u LIMIT 1"); // $stmt->execute(['u'=>$u]);
- $user = $stmt->fetch(); // if ($user && password_verify($p, $user['password'])) { // unset($user['password']); // $_SESSION['user'] = $user; // if ($user['role'] === 'superadmin') header('Location: dashboard_super.php'); // else header('Location: dashboard_admin.php');
- exit; // } else $error = 'Username atau password salah.'; // } -->
-
 <!doctype html>
-<html>
+<html lang="id">
 
 <head>
     <meta charset="utf-8">
@@ -15,18 +9,23 @@
 
 <body class="bg-gray-100 flex items-center justify-center h-screen">
     <div class="bg-white p-6 rounded shadow w-96">
-        <h2 class="text-xl font-semibold mb-4">Login SPK Marhaban</h2>
-        <?php if(isset($error)): ?>
-        <div class="text-red-600 mb-2">
-            <?=htmlspecialchars($error)?>
+        <h2 class="text-xl font-semibold mb-4 text-center">Login SPK Marhaban</h2>
+
+        <!-- Contoh alert error (kalau mau tampilkan statis) -->
+        <div class="text-red-600 mb-3 hidden" id="errorBox">
+            Username atau password salah.
         </div>
-        <?php endif; ?>
-        <form method="post">
-            <label class="block">Username</label>
-            <input name="username" class="w-full border p-2 rounded mb-3" required>
-            <label class="block">Password</label>
-            <input name="password" type="password" class="w-full border p-2 rounded mb-4" required>
-            <button name="login" class="w-full bg-blue-600 text-white p-2 rounded">Login</button>
+
+        <form>
+            <label class="block text-sm font-medium mb-1">Username</label>
+            <input name="username" class="w-full border p-2 rounded mb-3 focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
+
+            <label class="block text-sm font-medium mb-1">Password</label>
+            <input name="password" type="password" class="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
+
+            <button type="button" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded transition">
+        Login
+      </button>
         </form>
     </div>
 </body>

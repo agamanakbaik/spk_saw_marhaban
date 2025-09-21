@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dashboard Admin - SPK SAW Marhaban</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-green-600 text-white p-4 flex justify-between items-center">
+    <h1 class="text-lg font-bold">SPK SAW - Marhaban Parfume</h1>
+    <div>
+      <span class="mr-4">Halo, Admin</span>
+      <a href="logout.php" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600">Logout</a>
+    </div>
+  </nav>
+
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white shadow min-h-screen p-4">
+      <ul class="space-y-2">
+        <li><a href="dashboard_admin.php" class="block px-3 py-2 rounded hover:bg-green-100">🏠 Dashboard</a></li>
+        <li><a href="input_nilai.php" class="block px-3 py-2 rounded hover:bg-green-100">✏️ Input Nilai</a></li>
+        <li><a href="proses_saw.php" class="block px-3 py-2 rounded hover:bg-green-100">⚖️ Proses SAW</a></li>
+        <li><a href="hasil.php" class="block px-3 py-2 rounded hover:bg-green-100">📊 Lihat Hasil</a></li>
+      </ul>
+    </aside>
+
+    <!-- Konten Utama -->
+    <main class="flex-1 p-6">
+      <h2 class="text-2xl font-semibold mb-6">Dashboard Admin</h2>
+
+      <!-- Statistik -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="bg-white p-4 rounded shadow">
+          <h3 class="text-lg font-medium">Jumlah Periode</h3>
+          <p class="text-3xl font-bold text-green-600 mt-2">3</p>
+        </div>
+        <div class="bg-white p-4 rounded shadow">
+          <h3 class="text-lg font-medium">Jumlah Kriteria</h3>
+          <p class="text-3xl font-bold text-blue-600 mt-2">4</p>
+        </div>
+      </div>
+
+      <!-- Daftar Periode untuk Input Nilai -->
+      <div class="bg-white p-4 rounded shadow mb-6">
+        <h3 class="text-lg font-semibold mb-4">Daftar Periode (Siap Input Nilai)</h3>
+        <table class="w-full border border-gray-200">
+          <thead>
+            <tr class="bg-gray-100 text-left">
+              <th class="p-2 border">#</th>
+              <th class="p-2 border">Nama Periode</th>
+              <th class="p-2 border">Tahun</th>
+              <th class="p-2 border">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="p-2 border">1</td>
+              <td class="p-2 border">Periode Q1</td>
+              <td class="p-2 border">2025</td>
+              <td class="p-2 border">
+                <a href="input_nilai.php" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Input Nilai</a>
+              </td>
+            </tr>
+            <tr>
+              <td class="p-2 border">2</td>
+              <td class="p-2 border">Periode Q2</td>
+              <td class="p-2 border">2025</td>
+              <td class="p-2 border">
+                <a href="input_nilai.php" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Input Nilai</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tabel Hasil -->
+      <div class="bg-white p-4 rounded shadow">
+        <h3 class="text-lg font-semibold mb-4">Hasil Penilaian Periode</h3>
+        <table class="w-full border border-gray-200">
+          <thead>
+            <tr class="bg-gray-100 text-left">
+              <th class="p-2 border">#</th>
+              <th class="p-2 border">Nama Periode</th>
+              <th class="p-2 border">Tahun</th>
+              <th class="p-2 border">Hasil</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="p-2 border">1</td>
+              <td class="p-2 border">Periode Q1</td>
+              <td class="p-2 border">2025</td>
+              <td class="p-2 border"><span class="bg-green-100 text-green-700 px-2 py-1 rounded">Sehat</span></td>
+            </tr>
+            <tr>
+              <td class="p-2 border">2</td>
+              <td class="p-2 border">Periode Q2</td>
+              <td class="p-2 border">2025</td>
+              <td class="p-2 border"><span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded">Cukup Sehat</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

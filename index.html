@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPK SAW - Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS Kustom Sederhana untuk Sidebar Toggling */
+        
+        #sidebar-wrapper {
+            transition: margin-left 0.3s ease-in-out;
+            width: 15rem;
+            min-height: 100vh;
+        }
+        
+        #wrapper.toggled #sidebar-wrapper {
+            margin-left: -15rem;
+        }
+        /* Hanya untuk desktop, sidebar terlihat */
+        
+        @media (min-width: 768px) {
+            #sidebar-wrapper {
+                margin-left: 0;
+            }
+            #wrapper.toggled #sidebar-wrapper {
+                margin-left: -15rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 font-sans">
+    <div class="flex" id="wrapper">
+        <div class="bg-gray-800 border-r border-gray-700 md:relative fixed z-30" id="sidebar-wrapper">
+            <div class="sidebar-heading text-white p-4 text-xl font-bold border-b border-gray-700">SPK SAW</div>
+            <nav class="flex flex-col p-2">
+                <p class="text-gray-400 px-2 pt-4 pb-1 text-xs font-semibold uppercase">SUPER ADMIN</p>
+                <a href="#" class="p-3 text-white hover:bg-gray-700 rounded-md transition duration-150" onclick="loadContent('manajemen-admin')">
+                    Manajemen Admin
+                </a>
+
+                <p class="text-gray-400 px-2 pt-4 pb-1 text-xs font-semibold uppercase">ADMIN PANEL</p>
+                <a href="#" class="p-3 text-white hover:bg-gray-700 rounded-md transition duration-150" onclick="loadContent('dashboard')">
+                    Dashboard
+                </a>
+                <a href="#" class="p-3 text-white hover:bg-gray-700 rounded-md transition duration-150" onclick="loadContent('alternatif')">
+                    Data Alternatif
+                </a>
+                <a href="#" class="p-3 text-white hover:bg-gray-700 rounded-md transition duration-150" onclick="loadContent('kriteria')">
+                    Data Kriteria
+                </a>
+                <a href="#" class="p-3 text-white hover:bg-gray-700 rounded-md transition duration-150" onclick="loadContent('penilaian')">
+                    Penilaian Alternatif
+                </a>
+                <a href="#" class="p-3 text-white hover:bg-gray-700 rounded-md transition duration-150" onclick="loadContent('perhitungan')">
+                    Proses Perhitungan (SAW)
+                </a>
+                <a href="#" class="p-3 text-white hover:bg-gray-700 rounded-md transition duration-150" onclick="loadContent('hasil')">
+                    Hasil Keputusan
+                </a>
+            </nav>
+        </div>
+
+        <div id="page-content-wrapper" class="flex-grow min-h-screen">
+            <header class="bg-white shadow-md p-4 flex justify-between items-center">
+                <button class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded md:hidden" id="sidebarToggle">
+                    Menu
+                </button>
+                <div class="relative ml-auto">
+                    <button id="userMenuButton" class="flex items-center space-x-2 text-gray-600 hover:text-gray-800 focus:outline-none">
+                        <span>Admin User</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="userMenuDropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl z-20 hidden">
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</a>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-6">
+                <div id="content-container">
+                    <h1 class="text-3xl font-bold text-gray-800 mb-4">Selamat Datang!</h1>
+                    <p class="text-gray-600">Silakan pilih menu di sidebar.</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

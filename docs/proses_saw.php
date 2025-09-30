@@ -1,1 +1,0 @@
-proses perhitungan  saw

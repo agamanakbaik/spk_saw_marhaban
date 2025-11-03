@@ -1,24 +1,14 @@
 /**
  * MODEL: AlternatifModel.js
  * Bertanggung jawab untuk berinteraksi dengan tabel 'alternatifs' di database.
+ * ➡️ Mengatur struktur data dan interaksi dengan database.
+ * Model berisi skema (schema) data dan fungsi untuk CRUD (Create, Read, Update, Delete) ke database.
  */
 const db = require('../../config/db');
 
-// --- PENTING: PASTIKAN TABEL ALTERNATIFS SUDAH DIBUAT ---
-// Jika belum, jalankan query ini di phpMyAdmin Anda:
-/*
-CREATE TABLE alternatifs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    kode_alternatif VARCHAR(10) NOT NULL UNIQUE,
-    nama_periode VARCHAR(100) NOT NULL,
-    deskripsi TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-*/
-
 // Fungsi untuk mengambil semua data alternatif
-exports.getAll = async() => {
-    const sql = 'SELECT * FROM alternatifs ORDER BY id DESC';
+exports.getAll = async() => { //Mengambil semua baris dari tabel alternatifs, diurutkan berdasar id
+    const sql = 'SELECT * FROM alternatifs ORDER BY id DESC'; //DESC=Descending order = dari nilai terbesar → terkecil (kebalikan dari ASC)
     const [rows] = await db.query(sql);
     return rows;
 };

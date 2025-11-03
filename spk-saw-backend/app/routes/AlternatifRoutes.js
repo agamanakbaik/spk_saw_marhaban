@@ -1,3 +1,4 @@
+//Menentukan endpoint atau URL yang bisa diakses dari aplikasi (misalnya /login, /users, /products).
 /**
  * ROUTES: /api/alternatif
  * Menangani CRUD untuk data Alternatif (Periode Evaluasi).

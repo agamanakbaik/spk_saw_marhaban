@@ -23,10 +23,13 @@ document.getElementById("userNameDisplay").textContent = user.username;
 if (user.role !== "superadmin") {
   const adminMenu = document.getElementById("menu-manajemen-admin");
   if (adminMenu) adminMenu.style.display = "none";
-
+  
+  // ▼▼▼ TAMBAHKAN INI ▼▼▼
   const backupMenu = document.getElementById("menu-backup-db");
   if (backupMenu) backupMenu.style.display = "none";
+  // ▲▲▲ AKHIR TAMBAHAN ▲▲▲
 }
+
 
 // Logout
 document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -83,9 +86,16 @@ window.loadContent = async (page) => {
 
       const tableContainer = document.getElementById("altTable");
       const btnAdd = document.getElementById("btnAddAlt");
+
+      // 🔹 Load data awal
       await loadAlternatifTable();
+
+      // 🔹 Tombol tambah data
       btnAdd.addEventListener("click", () => showAltModal());
 
+      // ==================================================
+      // FUNCTION: Load Tabel Alternatif
+      // ==================================================
       async function loadAlternatifTable() {
         try {
           const res = await fetch(`${API_BASE_URL}/alternatif`, {
@@ -93,10 +103,12 @@ window.loadContent = async (page) => {
           });
           const data = await res.json();
           const alternatifs = (data.data || data || []).sort((a, b) => a.id - b.id); 
+
           if (!alternatifs.length) {
             tableContainer.innerHTML = `<p class="text-gray-500">Belum ada data alternatif.</p>`;
             return;
           }
+
           const rows = alternatifs
             .map(
               (a) =>
@@ -106,13 +118,18 @@ window.loadContent = async (page) => {
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${a.nama_periode}</td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${a.deskripsi || "-"}</td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
-                        <button class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors" onclick='editAlt(${JSON.stringify(a)})'>Edit</button>
-                        <button class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors" onclick='deleteAlt(${a.id})'>Hapus</button>
+                        <button class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors" onclick='editAlt(${JSON.stringify(
+                a
+              )})'>Edit</button>
+                        <button class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors" onclick='deleteAlt(${
+                a.id
+              })'>Hapus</button>
                       </td>
                     </tr>
                   `
             )
             .join("");
+
           tableContainer.innerHTML = `
                 <div class="bg-white rounded-lg shadow-lg overflow-hidden">
                   <table class="min-w-full">
@@ -133,14 +150,21 @@ window.loadContent = async (page) => {
           tableContainer.innerHTML = `<p class="text-red-500">Gagal memuat data alternatif.</p>`;
         }
       }
+
+      // ==================================================
+      // FUNCTION: Tampilkan Modal Tambah/Edit (CANTIK)
+      // ==================================================
       window.showAltModal = (data = {}) => {
         const modal = document.getElementById("modal-container");
         modal.classList.remove("hidden");
-        modal.classList.add("flex");
+        modal.classList.add("flex"); 
+
         modal.innerHTML = `
               <div class="bg-white rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
                   <div class="flex justify-between items-center p-5 border-b border-gray-200">
-                      <h3 class="text-xl font-semibold text-gray-800">${data.id ? "Edit" : "Tambah"} Alternatif</h3>
+                      <h3 class="text-xl font-semibold text-gray-800">
+                          ${data.id ? "Edit" : "Tambah"} Alternatif
+                      </h3>
                       <button onclick="closeAltModal()" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
                   </div>
                   <form id="altForm">
@@ -160,18 +184,30 @@ window.loadContent = async (page) => {
                           </div>
                       </div>
                       <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                          <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition" onclick="closeAltModal()">Batal</button>
-                          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">Simpan</button>
+                          <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition" onclick="closeAltModal()">
+                              Batal
+                          </button>
+                          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">
+                              Simpan
+                          </button>
                       </div>
                   </form>
               </div>
             `;
         document.getElementById("altForm").addEventListener("submit", saveAlt);
       };
+
+      // ==================================================
+      // FUNCTION: Tutup Modal
+      // ==================================================
       window.closeAltModal = () => {
         document.getElementById("modal-container").classList.add("hidden");
         document.getElementById("modal-container").innerHTML = "";
       };
+
+      // ==================================================
+      // FUNCTION: Simpan Data (Tambah / Edit)
+      // ==================================================
       async function saveAlt(e) {
         e.preventDefault();
         const id = document.getElementById("altId").value;
@@ -180,16 +216,24 @@ window.loadContent = async (page) => {
           nama_periode: document.getElementById("namaAlt").value,
           deskripsi: document.getElementById("descAlt").value,
         };
-        const url = id ? `${API_BASE_URL}/alternatif/${id}` : `${API_BASE_URL}/alternatif`;
+
+        const url = id ?
+          `${API_BASE_URL}/alternatif/${id}` :
+          `${API_BASE_URL}/alternatif`;
         const method = id ? "PUT" : "POST";
+
         try {
           const res = await fetch(url, {
             method,
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
             body: JSON.stringify(payload),
           });
           const result = await res.json();
           if (!res.ok) throw new Error(result.message);
+
           showToast(result.message || "Berhasil disimpan!");
           closeAltModal();
           await loadAlternatifTable();
@@ -198,10 +242,19 @@ window.loadContent = async (page) => {
           showToast(`Terjadi kesalahan: ${err.message}`, "error");
         }
       }
+
+      // ==================================================
+      // FUNCTION: Edit dan Delete (didaftarkan di window)
+      // ==================================================
       window.editAlt = (data) => showAltModal(data);
+
       window.deleteAlt = async (id) => {
-        const confirmed = await showConfirm("Hapus Data", "Yakin ingin menghapus data alternatif ini?");
+        const confirmed = await showConfirm(
+          "Hapus Data",
+          "Yakin ingin menghapus data alternatif ini?"
+        );
         if (!confirmed) return;
+
         try {
           const res = await fetch(`${API_BASE_URL}/alternatif/${id}`, {
             method: "DELETE",
@@ -209,6 +262,7 @@ window.loadContent = async (page) => {
           });
           const result = await res.json();
           if (!res.ok) throw new Error(result.message);
+
           showToast(result.message || "Data berhasil dihapus!");
           await loadAlternatifTable();
         } catch (err) {
@@ -216,6 +270,7 @@ window.loadContent = async (page) => {
           showToast(`Gagal menghapus data: ${err.message}`, "error");
         }
       };
+
       return;
     }
 
@@ -236,8 +291,12 @@ window.loadContent = async (page) => {
       const tableContainer = document.getElementById("kritTable");
       const btnAdd = document.getElementById("btnAddKrit");
       const pageTitle = document.getElementById("pageTitle");
+
       window.currentKriteriaId = null;
 
+      // ============================
+      // Load tabel utama kriteria
+      // ============================
       window.loadKriteriaTable = async function () {
         pageTitle.innerText = "Data Kriteria";
         try {
@@ -246,10 +305,12 @@ window.loadContent = async (page) => {
           });
           const data = await res.json();
           const kriterias = (Array.isArray(data) ? data : data.data || []).sort((a,b) => a.id - b.id);
+
           if (!kriterias.length) {
             tableContainer.innerHTML = `<p class="text-gray-500">Belum ada data kriteria.</p>`;
             return;
           }
+
           const rows = kriterias
             .map(
               (k) => `
@@ -274,6 +335,7 @@ window.loadContent = async (page) => {
               `
             )
             .join("");
+
           tableContainer.innerHTML = `
               <div class="bg-white rounded-lg shadow-lg overflow-hidden">
                 <table class="min-w-full">
@@ -295,23 +357,34 @@ window.loadContent = async (page) => {
           tableContainer.innerHTML = `<p class="text-red-500">Gagal memuat data kriteria.</p>`;
         }
       };
+
+      // ==============================
+      // SUB KRITERIA DALAM HALAMAN
+      // ==============================
       window.openSubKriteria = async function (id, namaKriteria) {
         window.currentKriteriaId = id;
         const kriteriaId = id;
+
         tableContainer.innerHTML = `<div class="p-4 text-center text-indigo-500">Memuat sub kriteria...</div>`;
         pageTitle.innerText = `Sub Kriteria - ${namaKriteria}`;
+
         try {
           const res = await fetch(
             `${API_BASE_URL}/subkriteria?kriteria_id=${kriteriaId}`, {
               headers: { Authorization: `Bearer ${token}` },
             }
           );
+
           if (!res.ok) {
             const errorData = await res.json();
-            throw new Error(errorData.message || "Gagal memuat sub kriteria.");
+            throw new Error(
+              errorData.message || "Gagal memuat sub kriteria dari API."
+            );
           }
+
           const data = await res.json();
           const subkrits = (Array.isArray(data) ? data : data.data || []).sort((a,b) => a.id - b.id);
+
           const rows = subkrits.length ?
             subkrits
             .map(
@@ -322,15 +395,21 @@ window.loadContent = async (page) => {
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${s.nilai}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
                     <button class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors"
-                      onclick='showSubKritModal(${JSON.stringify({ ...s, kriteria_id: kriteriaId })})'>Edit</button>
+                      onclick='showSubKritModal(${JSON.stringify({
+                        ...s,
+                        kriteria_id: kriteriaId,
+                      })})'>Edit</button>
                     <button class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors"
-                      onclick='deleteSubKrit(${s.id}, ${kriteriaId})'>Hapus</button>
+                      onclick='deleteSubKrit(${
+                        s.id
+                      }, ${kriteriaId})'>Hapus</button>
                   </td>
                 </tr>
                 `
             )
             .join("") :
             `<tr><td colspan="4" class="text-center text-gray-500 py-4">Belum ada sub kriteria.</td></tr>`;
+
           tableContainer.innerHTML = `
                 <div class="mb-4 flex items-center space-x-2">
                   <button class="bg-gray-600 text-white px-3 py-2 rounded-md hover:bg-gray-700 text-sm transition" onclick="loadKriteriaTable()">
@@ -357,20 +436,29 @@ window.loadContent = async (page) => {
               `;
         } catch (err) {
           console.error(err);
-          tableContainer.innerHTML = `<p class="text-red-500">Gagal memuat sub kriteria: ${err.message || "Periksa konsol."}</p>`;
+          tableContainer.innerHTML = `<p class="text-red-500">Gagal memuat sub kriteria: ${
+            err.message || "Periksa konsol."
+          }</p>`;
         }
       };
+
+      // ==================================================
+      // FUNCTION: Tampilkan Modal Tambah/Edit Sub Kriteria (CANTIK)
+      // ==================================================
       window.showSubKritModal = (data = {}) => {
         const modal = document.getElementById("modal-container");
         modal.classList.remove("hidden");
         modal.classList.add("flex");
+
         const title = data.id ? "Edit Sub Kriteria" : "Tambah Sub Kriteria";
         const kriteriaId = data.kriteria_id || window.currentKriteriaId;
+
         if (!kriteriaId) {
           showToast("Error: ID Kriteria tidak ditemukan.", "error");
           closeSubKritModal();
           return;
         }
+
         modal.innerHTML = `
             <div class="bg-white rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
                 <div class="flex justify-between items-center p-5 border-b border-gray-200">
@@ -381,13 +469,18 @@ window.loadContent = async (page) => {
                     <div class="p-6 space-y-4">
                         <input type="hidden" id="subKritId" value="${data.id || ""}">
                         <input type="hidden" id="kriteriaIdInput" value="${kriteriaId}">
+                        
                         <div>
                             <label for="namaSubKrit" class="block text-sm font-medium text-gray-700">Nama Sub Kriteria</label>
-                            <input type="text" id="namaSubKrit" value="${data.nama || ""}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <input type="text" id="namaSubKrit" value="${
+                              data.nama || ""
+                            }" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
                         </div>
                         <div>
                             <label for="nilaiSubKrit" class="block text-sm font-medium text-gray-700">Nilai</label>
-                            <input type="number" id="nilaiSubKrit" value="${data.nilai || ""}" step="1" min="1" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <input type="number" id="nilaiSubKrit" value="${
+                              data.nilai || ""
+                            }" step="1" min="1" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
                         </div>
                     </div>
                     <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
@@ -397,33 +490,51 @@ window.loadContent = async (page) => {
                 </form>
             </div>
             `;
-        document.getElementById("subKritForm").addEventListener("submit", saveSubKrit);
+
+        document
+          .getElementById("subKritForm")
+          .addEventListener("submit", saveSubKrit);
       };
+
       window.closeSubKritModal = () => {
         document.getElementById("modal-container").classList.add("hidden");
         document.getElementById("modal-container").innerHTML = "";
       };
+
+      // ==================================================
+      // FUNCTION: Simpan Data Sub Kriteria (Tambah / Edit)
+      // ==================================================
       async function saveSubKrit(e) {
         e.preventDefault();
         const id = document.getElementById("subKritId").value;
         const kriteria_id = document.getElementById("kriteriaIdInput").value;
+
         const payload = {
           kriteria_id: parseInt(kriteria_id),
           nama: document.getElementById("namaSubKrit").value,
           nilai: parseInt(document.getElementById("nilaiSubKrit").value),
         };
-        const url = id ? `${API_BASE_URL}/subkriteria/${id}` : `${API_BASE_URL}/subkriteria`;
+
+        const url = id ?
+          `${API_BASE_URL}/subkriteria/${id}` :
+          `${API_BASE_URL}/subkriteria`;
         const method = id ? "PUT" : "POST";
         const pageTitleText = document.getElementById("pageTitle").innerText;
         const namaKriteria = pageTitleText.replace("Sub Kriteria - ", "");
+
         try {
           const res = await fetch(url, {
             method,
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
             body: JSON.stringify(payload),
           });
+
           const result = await res.json();
           if (!res.ok) throw new Error(result.message);
+
           showToast(result.message || "Sub Kriteria berhasil disimpan!");
           closeSubKritModal();
           await openSubKriteria(kriteria_id, namaKriteria);
@@ -432,18 +543,28 @@ window.loadContent = async (page) => {
           showToast(`Terjadi kesalahan: ${err.message}`, "error");
         }
       }
+
+      // ==================================================
+      // FUNCTION: Hapus Sub Kriteria
+      // ==================================================
       window.deleteSubKrit = async (id, kriteria_id) => {
-        const confirmed = await showConfirm("Hapus Data", "Yakin hapus sub kriteria ini?");
+        const confirmed = await showConfirm(
+          "Hapus Data",
+          "Yakin hapus sub kriteria ini?"
+        );
         if (confirmed) {
           const pageTitleText = document.getElementById("pageTitle").innerText;
           const namaKriteria = pageTitleText.replace("Sub Kriteria - ", "");
+
           try {
             const res = await fetch(`${API_BASE_URL}/subkriteria/${id}`, {
               method: "DELETE",
               headers: { Authorization: `Bearer ${token}` },
             });
+
             const result = await res.json();
             if (!res.ok) throw new Error(result.message);
+
             showToast(result.message || "Sub Kriteria berhasil dihapus!");
             await openSubKriteria(kriteria_id, namaKriteria);
           } catch (err) {
@@ -452,10 +573,19 @@ window.loadContent = async (page) => {
           }
         }
       };
+
+      // ==============================
+      // CRUD FUNCTION (Kriteria Utama)
+      // ==============================
       window.editKrit = (data) => showKritModal(data);
+
       window.deleteKrit = async (id) => {
-        const confirmed = await showConfirm("Hapus Kriteria", "Yakin ingin menghapus kriteria ini? Semua sub-kriteria yang terkait akan ikut terhapus.");
+        const confirmed = await showConfirm(
+          "Hapus Kriteria",
+          "Yakin ingin menghapus kriteria ini? Semua sub-kriteria yang terkait akan ikut terhapus."
+        );
         if (!confirmed) return;
+
         try {
           const res = await fetch(`${API_BASE_URL}/kriteria/${id}`, {
             method: "DELETE",
@@ -463,6 +593,7 @@ window.loadContent = async (page) => {
           });
           const result = await res.json();
           if (!res.ok) throw new Error(result.message);
+
           showToast(result.message || "Data berhasil dihapus!");
           await loadKriteriaTable();
         } catch (err) {
@@ -470,14 +601,21 @@ window.loadContent = async (page) => {
           showToast(`Gagal menghapus data: ${err.message}`, "error");
         }
       };
+
+      // ==============================
+      // MODAL TAMBAH / EDIT (Kriteria Utama) (CANTIK)
+      // ==============================
       window.showKritModal = (data = {}) => {
         const modal = document.getElementById("modal-container");
         modal.classList.remove("hidden");
         modal.classList.add("flex");
+
         modal.innerHTML = `
             <div class="bg-white rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
                 <div class="flex justify-between items-center p-5 border-b border-gray-200">
-                    <h3 class="text-xl font-semibold text-gray-800">${data.id ? "Edit" : "Tambah"} Kriteria</h3>
+                    <h3 class="text-xl font-semibold text-gray-800">
+                        ${data.id ? "Edit" : "Tambah"} Kriteria
+                    </h3>
                     <button onclick="closeKritModal()" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
                 </div>
                 <form id="kritForm">
@@ -485,21 +623,31 @@ window.loadContent = async (page) => {
                         <input type="hidden" id="kritId" value="${data.id || ""}">
                         <div>
                             <label for="kodeKrit" class="block text-sm font-medium text-gray-700">Kode Kriteria</label>
-                            <input type="text" id="kodeKrit" value="${data.kode || ""}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <input type="text" id="kodeKrit" value="${
+                              data.kode || ""
+                            }" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
                         </div>
                         <div>
                             <label for="namaKrit" class="block text-sm font-medium text-gray-700">Nama Kriteria</label>
-                            <input type="text" id="namaKrit" value="${data.nama || ""}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <input type="text" id="namaKrit" value="${
+                              data.nama || ""
+                            }" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
                         </div>
                         <div>
                             <label for="bobotKrit" class="block text-sm font-medium text-gray-700">Bobot</label>
-                            <input type="number" id="bobotKrit" value="${parseFloat(data.bobot) || ""}" step="0.01" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <input type="number" id="bobotKrit" value="${
+                              parseFloat(data.bobot) || ""
+                            }" step="0.01" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
                         </div>
                         <div>
                             <label for="tipeKrit" class="block text-sm font-medium text-gray-700">Tipe</label>
                             <select id="tipeKrit" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="Benefit" ${data.tipe === "Benefit" ? "selected" : ""}>Benefit</option>
-                                <option value="Cost" ${data.tipe === "Cost" ? "selected" : ""}>Cost</option>
+                                <option value="Benefit" ${
+                                  data.tipe === "Benefit" ? "selected" : ""
+                                }>Benefit</option>
+                                <option value="Cost" ${
+                                  data.tipe === "Cost" ? "selected" : ""
+                                }>Cost</option>
                             </select>
                         </div>
                     </div>
@@ -510,12 +658,16 @@ window.loadContent = async (page) => {
                 </form>
             </div>
             `;
-        document.getElementById("kritForm").addEventListener("submit", saveKrit);
+        document
+          .getElementById("kritForm")
+          .addEventListener("submit", saveKrit);
       };
+
       window.closeKritModal = () => {
         document.getElementById("modal-container").classList.add("hidden");
         document.getElementById("modal-container").innerHTML = "";
       };
+
       async function saveKrit(e) {
         e.preventDefault();
         const id = document.getElementById("kritId").value;
@@ -525,16 +677,24 @@ window.loadContent = async (page) => {
           bobot: document.getElementById("bobotKrit").value,
           tipe: document.getElementById("tipeKrit").value,
         };
-        const url = id ? `${API_BASE_URL}/kriteria/${id}` : `${API_BASE_URL}/kriteria`;
+
+        const url = id ?
+          `${API_BASE_URL}/kriteria/${id}` :
+          `${API_BASE_URL}/kriteria`;
         const method = id ? "PUT" : "POST";
+
         try {
           const res = await fetch(url, {
             method,
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
             body: JSON.stringify(payload),
           });
           const result = await res.json();
           if (!res.ok) throw new Error(result.message);
+
           showToast(result.message || "Berhasil disimpan!");
           closeKritModal();
           await loadKriteriaTable();
@@ -543,6 +703,10 @@ window.loadContent = async (page) => {
           showToast(`Terjadi kesalahan: ${err.message}`, "error");
         }
       }
+
+      // ==============================
+      // Inisialisasi Awal
+      // ==============================
       await loadKriteriaTable();
       btnAdd.addEventListener("click", () => showKritModal());
       return;
@@ -554,23 +718,34 @@ window.loadContent = async (page) => {
     if (page === "penilaian") {
       container.innerHTML = `<h2 class="text-2xl font-bold mb-4">Penilaian Alternatif</h2><div id="penilaian-loader" class="text-gray-600">Memuat data...</div>`;
       const loader = document.getElementById("penilaian-loader");
+
       try {
         loader.innerText = "Memuat alternatif...";
         const [altRes, kritRes, penRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/penilaian`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/alternatif`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE_URL}/kriteria`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE_URL}/penilaian`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         ]);
+
         const altJson = await altRes.json();
         const kritJson = await kritRes.json();
         const penJson = await penRes.json();
+
         const alternatifs = altJson.data || altJson || [];
         const kriterias = kritJson.data || kritJson || [];
         const penilaianData = penJson.data || penJson || [];
+
         if (kriterias.length === 0 || alternatifs.length === 0) {
           container.innerHTML = `<p class="text-red-500">Data Alternatif atau Kriteria masih kosong. Harap isi data tersebut terlebih dahulu.</p>`;
           return;
         }
+
         loader.innerText = "Memuat data sub-kriteria...";
         const subKriteriaMap = new Map();
         for (const k of kriterias) {
@@ -581,21 +756,42 @@ window.loadContent = async (page) => {
           const subData = subJson.data || subJson || [];
           subKriteriaMap.set(k.id, subData);
         }
+
         const penilaianMap = new Map();
         penilaianData.forEach((p) => {
           if (p.nilai !== undefined && p.alternatif_id && p.kriteria_id) {
             penilaianMap.set(`${p.alternatif_id}-${p.kriteria_id}`, p.nilai);
           }
         });
+
         loader.innerText = "Merender tabel...";
-        const tableHeaders = kriterias.map((k) => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${k.nama}</th>`).join("");
+
+        const tableHeaders = kriterias
+          .map(
+            (k) =>
+            `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${k.nama}</th>`
+          )
+          .join("");
+
         const tableRows = alternatifs
           .map((a, index) => {
             const kriteriaCells = kriterias
               .map((k) => {
                 const subKriterias = subKriteriaMap.get(k.id) || [];
                 const currentValue = penilaianMap.get(`${a.id}-${k.id}`);
-                const options = subKriterias.map((s) => `<option value="${s.nilai}" ${s.nilai == currentValue ? "selected" : ""}>${s.nama}</option>`).join("");
+
+                const options = subKriterias
+                  .map(
+                    (s) => `
+                        <option value="${s.nilai}" ${
+                      s.nilai == currentValue ? "selected" : ""
+                    }>
+                            ${s.nama}
+                        </option>
+                        `
+                  )
+                  .join("");
+
                 return `
                         <td class="px-4 py-2 border-b">
                             <select 
@@ -610,22 +806,29 @@ window.loadContent = async (page) => {
                         `;
               })
               .join("");
+
             return `
                     <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">${index + 1}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${a.nama_periode} (${a.deskripsi || "Tidak ada deskripsi"})</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">${
+                          index + 1
+                        }</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${
+                          a.nama_periode
+                        } (${a.deskripsi || "Tidak ada deskripsi"})</td>
                         ${kriteriaCells}
                     </tr>
                     `;
           })
           .join("");
+
         container.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold text-gray-800">Penilaian Alternatif</h2>
                     <nav class="text-sm" aria-label="Breadcrumb">
                       <ol class="list-none p-0 inline-flex">
                         <li class="flex items-center">
-                          <span class="text-gray-500">Dashboard</span> <svg class="fill-current w-3 h-3 mx-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M285.476 272.971L91.132 467.314c-9.373 9.373-24.569 9.373-33.941 0l-22.667-22.667c-9.357-9.357-9.375-24.522-.04-33.901L188.505 256 34.484 101.255c-9.335-9.379-9.317-24.544.04-33.901l22.667-22.667c9.373-9.373 24.569-9.373 33.941 0L285.475 239.03c9.373 9.372 9.373 24.568.001 33.941z"/></svg>
+                          <span class="text-gray-500">Dashboard</span>
+                          <svg class="fill-current w-3 h-3 mx-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M285.476 272.971L91.132 467.314c-9.373 9.373-24.569 9.373-33.941 0l-22.667-22.667c-9.357-9.357-9.375-24.522-.04-33.901L188.505 256 34.484 101.255c-9.335-9.379-9.317-24.544.04-33.901l22.667-22.667c9.373-9.373 24.569-9.373 33.941 0L285.475 239.03c9.373 9.372 9.373 24.568.001 33.941z"/></svg>
                         </li>
                         <li class="flex items-center">
                           <span class="text-gray-700 font-semibold">Nilai Alternatif</span>
@@ -633,6 +836,7 @@ window.loadContent = async (page) => {
                       </ol>
                     </nav>
                 </div>
+
                 <div class="bg-white rounded-lg shadow-lg overflow-hidden">
                     <form id="penilaian-form">
                         <div class="overflow-x-auto">
@@ -656,6 +860,7 @@ window.loadContent = async (page) => {
                                 </tbody>
                             </table>
                         </div>
+                        
                         <div class="p-4 bg-gray-50 border-t">
                             <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150">
                                 Simpan Penilaian
@@ -664,46 +869,62 @@ window.loadContent = async (page) => {
                     </form>
                 </div>
                 `;
-        document.getElementById("penilaian-form").addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const btn = e.target.querySelector('button[type="submit"]');
-          btn.disabled = true;
-          btn.innerText = "Menyimpan...";
-          try {
-            const selects = e.target.querySelectorAll("select");
-            const payload = [];
-            selects.forEach((select) => {
-              const nilai = select.value;
-              if (nilai) {
-                payload.push({
-                  alternatif_id: parseInt(select.dataset.altId),
-                  kriteria_id: parseInt(select.dataset.kritId),
-                  nilai: parseFloat(nilai),
-                });
+
+        document
+          .getElementById("penilaian-form")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerText = "Menyimpan...";
+
+            try {
+              const selects = e.target.querySelectorAll("select");
+              const payload = [];
+
+              selects.forEach((select) => {
+                const nilai = select.value;
+                if (nilai) {
+                  payload.push({
+                    alternatif_id: parseInt(select.dataset.altId),
+                    kriteria_id: parseInt(select.dataset.kritId),
+                    nilai: parseFloat(nilai),
+                  });
+                }
+              });
+
+              if (payload.length === 0) {
+                showToast(
+                  "Tidak ada data untuk disimpan. Silakan isi nilai terlebih dahulu.",
+                  "error"
+                );
+                btn.disabled = false;
+                btn.innerText = "Simpan";
+                return;
               }
-            });
-            if (payload.length === 0) {
-              showToast("Tidak ada data untuk disimpan.", "error");
+
+              const res = await fetch(`${API_BASE_URL}/penilaian/save-all`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(payload),
+              });
+
+              const result = await res.json();
+              if (!res.ok) throw new Error(result.message);
+
+              showToast(result.message || "Semua data berhasil disimpan!");
+            } catch (err) {
+              console.error("Gagal menyimpan batch:", err);
+              showToast(`Terjadi kesalahan: ${err.message}`, "error");
+            } finally {
               btn.disabled = false;
-              btn.innerText = "Simpan";
-              return;
+              btn.innerText = "Simpan Penilaian";
             }
-            const res = await fetch(`${API_BASE_URL}/penilaian/save-all`, {
-              method: "POST",
-              headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
-              body: JSON.stringify(payload),
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.message);
-            showToast(result.message || "Semua data berhasil disimpan!");
-          } catch (err) {
-            console.error("Gagal menyimpan batch:", err);
-            showToast(`Terjadi kesalahan: ${err.message}`, "error");
-          } finally {
-            btn.disabled = false;
-            btn.innerText = "Simpan Penilaian";
-          }
-        });
+          });
       } catch (err) {
         console.error("Error loading penilaian page:", err);
         container.innerHTML = `<p class="text-red-500">Gagal memuat halaman penilaian. ${err.message}</p>`;
@@ -728,191 +949,234 @@ window.loadContent = async (page) => {
                 </p>
             </div>
         `;
-      document.getElementById("run-saw-btn").addEventListener("click", async () => {
-        const resultsContainer = document.getElementById("results-container");
-        const btn = document.getElementById("run-saw-btn");
-        btn.disabled = true;
-        btn.innerText = "Menghitung...";
-        resultsContainer.innerHTML = `
+
+      document
+        .getElementById("run-saw-btn")
+        .addEventListener("click", async () => {
+          const resultsContainer = document.getElementById("results-container");
+          const btn = document.getElementById("run-saw-btn");
+
+          btn.disabled = true;
+          btn.innerText = "Menghitung...";
+          resultsContainer.innerHTML = `
                 <div class="p-8 text-center text-indigo-600 text-xl font-semibold bg-white rounded-lg shadow-lg">
                     Sedang memproses perhitungan...
                 </div>`;
-        try {
-          const res = await fetch(`${API_BASE_URL}/perhitungan/hitung`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.message || "Gagal mendapatkan hasil.");
-          const kriteriaData = data.kriteriaData || [];
-          const initialValues = data.initialValues || [];
-          const normalizedValues = data.normalizedValues || [];
-          const weightedNormalizedValues = data.weightedNormalizedValues || [];
-          const ranking = data.ranking || [];
-          const createTableHTML = (title, headers, rowsData, dataExtractor, rowClassCallback = null) => {
-            const headerHTML = headers.map(h => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${h}</th>`).join('');
-            const bodyHTML = rowsData.map((row, index) => {
-              const rowClass = rowClassCallback ? rowClassCallback(row) : 'hover:bg-gray-50';
-              const cellsHTML = headers.map(headerKey => `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${dataExtractor(row, headerKey, index)}</td>`).join('');
-              return `<tr class="${rowClass}">${cellsHTML}</tr>`;
-            }).join('');
-            return `
-                  <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-                      <h3 class="text-xl font-bold text-gray-800 p-5 border-b border-gray-200">${title}</h3>
-                      <div class="overflow-x-auto">
-                          <table class="min-w-full">
-                              <thead class="bg-gray-50"><tr>${headerHTML}</tr></thead>
-                              <tbody class="bg-white divide-y divide-gray-200">${bodyHTML}</tbody>
-                          </table>
-                      </div>
-                  </div>`;
-          };
-          const kriteriaHeaders = ["No", "Nama Alternatif", ...kriteriaData.map(k => `${k.nama} (${k.kode})`)];
-          const kriteriaHeadersWithBobot = ['No', 'Nama Alternatif', ...kriteriaData.map(k => `${k.nama} (${k.kode}) (Bobot: ${k.bobot_normalisasi.toFixed(2)})`)];
-          const initialExtractor = (row, headerKey, index) => {
-            if (headerKey === "No") return index + 1;
-            if (headerKey === "Nama Alternatif") return row.alternatif_nama;
-            const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
-            return row[kriteriaCode] ?.toFixed(3) ?? "N/A";
-          };
-          const normalizedExtractor = (row, headerKey, index) => {
-            if (headerKey === "No") return index + 1;
-            if (headerKey === "Nama Alternatif") return row.alternatif_nama;
-            const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
-            return row[kriteriaCode] ?.toFixed(3) ?? "N/A";
-          };
-          const weightedExtractor = (row, headerKey, index) => {
-            if (headerKey === "No") return index + 1;
-            if (headerKey === "Nama Alternatif") return row.alternatif_nama;
-            const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
-            return row[kriteriaCode] ?.toFixed(3) ?? "N/A";
-          };
-          const rankingHeaders = ["Ranking", "Nama Alternatif", "Skor Akhir (V)"];
-          const rankingExtractor = (row, headerKey) => {
-            if (headerKey === "Ranking") return `<span class="font-bold text-lg ${row.rank === 1 ? 'text-green-600' : 'text-gray-900'}">${row.rank}</span>`;
-            if (headerKey === "Nama Alternatif") return row.alternatif_nama;
-            if (headerKey === "Skor Akhir (V)") return `<span class="font-semibold text-gray-900">${row.nilai.toFixed(4)}</span>`;
-            return "N/A";
-          };
-          const rankingRowStyler = (row) => (row.rank === 1 ? 'bg-green-50 font-semibold' : 'hover:bg-gray-50');
-          const initialTableHTML = createTableHTML("Nilai Awal (X)", kriteriaHeaders, initialValues, initialExtractor);
-          const normalizedTableHTML = createTableHTML("Nilai Normalisasi (R)", kriteriaHeadersWithBobot, normalizedValues, normalizedExtractor);
-          const weightedTableHTML = createTableHTML("Nilai Normalisasi Terbobot (W * R)", kriteriaHeaders, weightedNormalizedValues, weightedExtractor);
-          const rankingTableHTML = createTableHTML("Hasil Peringkat (V)", rankingHeaders, ranking, rankingExtractor, rankingRowStyler);
-          const printButtonHTML = `
+
+          try {
+            const res = await fetch(`${API_BASE_URL}/perhitungan/hitung`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (!res.ok)
+              throw new Error(
+                data.message || "Gagal mendapatkan hasil dari server."
+              );
+
+            const kriteriaData = data.kriteriaData || [];
+            const initialValues = data.initialValues || [];
+            const normalizedValues = data.normalizedValues || [];
+            const weightedNormalizedValues =
+              data.weightedNormalizedValues || [];
+            const ranking = data.ranking || [];
+
+            // --- Helper Function untuk Membuat Tabel Cantik ---
+            const createTableHTML = (title, headers, rowsData, dataExtractor, rowClassCallback = null) => {
+              const headerHTML = headers.map(h =>
+                `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${h}</th>`
+              ).join('');
+
+              const bodyHTML = rowsData.map((row, index) => {
+                const rowClass = rowClassCallback ? rowClassCallback(row) : 'hover:bg-gray-50';
+                const cellsHTML = headers.map(headerKey =>
+                  `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${dataExtractor(row, headerKey, index)}</td>`
+                ).join('');
+                return `<tr class="${rowClass}">${cellsHTML}</tr>`;
+              }).join('');
+
+              return `
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                        <h3 class="text-xl font-bold text-gray-800 p-5 border-b border-gray-200">${title}</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>${headerHTML}</tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    ${bodyHTML}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>`;
+            };
+
+            // --- Persiapan Header & Data Extractor ---
+            const kriteriaHeaders = ["No", "Nama Alternatif", ...kriteriaData.map(k => `${k.nama} (${k.kode})`)];
+            const kriteriaHeadersWithBobot = ['No', 'Nama Alternatif', ...kriteriaData.map(k => `${k.nama} (${k.kode}) (Bobot: ${k.bobot})`)];
+
+            const initialExtractor = (row, headerKey, index) => {
+              if (headerKey === "No") return index + 1;
+              if (headerKey === "Nama Alternatif") return row.alternatif_nama;
+              const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
+              return row[kriteriaCode] ? .toFixed(3) ?? "N/A";
+            };
+            const normalizedExtractor = (row, headerKey, index) => {
+              if (headerKey === "No") return index + 1;
+              if (headerKey === "Nama Alternatif") return row.alternatif_nama;
+              const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
+              return row[kriteriaCode] ? .toFixed(3) ?? "N/A";
+            };
+            const weightedExtractor = (row, headerKey, index) => {
+              if (headerKey === "No") return index + 1;
+              if (headerKey === "Nama Alternatif") return row.alternatif_nama;
+              const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
+              return row[kriteriaCode] ? .toFixed(3) ?? "N/A";
+            };
+
+            const rankingHeaders = ["Ranking", "Nama Alternatif", "Skor Akhir (V)"];
+            const rankingExtractor = (row, headerKey) => {
+              if (headerKey === "Ranking") return `<span class="font-bold text-lg ${row.rank === 1 ? 'text-green-600' : 'text-gray-900'}">${row.rank}</span>`;
+              if (headerKey === "Nama Alternatif") return row.alternatif_nama;
+              if (headerKey === "Skor Akhir (V)") return `<span class="font-semibold text-gray-900">${row.nilai.toFixed(4)}</span>`;
+              return "N/A";
+            };
+            const rankingRowStyler = (row) => {
+              return row.rank === 1 ? 'bg-green-50 font-semibold' : 'hover:bg-gray-50';
+            };
+
+            // --- Render Semua Tabel ---
+            const initialTableHTML = createTableHTML("Nilai Awal (X)", kriteriaHeaders, initialValues, initialExtractor);
+            const normalizedTableHTML = createTableHTML("Nilai Normalisasi (R)", kriteriaHeadersWithBobot, normalizedValues, normalizedExtractor);
+            const weightedTableHTML = createTableHTML("Nilai Normalisasi Terbobot (W * R)", kriteriaHeaders, weightedNormalizedValues, weightedExtractor);
+            const rankingTableHTML = createTableHTML("Hasil Peringkat (V)", rankingHeaders, ranking, rankingExtractor, rankingRowStyler);
+
+            // --- HTML untuk Tombol Cetak & Grafik ---
+            const printButtonHTML = `
                 <div class="mt-6 p-4 bg-green-600 rounded-lg shadow-lg text-center cursor-pointer hover:bg-green-700 transition-all duration-200" onclick="window.print()">
-                    <button class="text-white font-bold text-lg"><i class="bi bi-printer-fill mr-2"></i>Cetak Hasil</button>
+                    <button class="text-white font-bold text-lg">
+                        <i class="bi bi-printer-fill mr-2"></i>Cetak Hasil
+                    </button>
                 </div>`;
-          const graphHTML = `
+
+            const graphHTML = `
                 <div class="bg-white rounded-lg shadow-lg mt-8">
                      <h3 class="text-xl font-bold text-gray-800 p-5 border-b border-gray-200">Grafik Nilai Terbobot</h3>
                      <div class="p-4" style="height: 400px;">
                          <canvas id="weightedChart"></canvas>
                      </div>
                 </div>`;
-          resultsContainer.innerHTML = initialTableHTML + normalizedTableHTML + weightedTableHTML + rankingTableHTML + printButtonHTML + graphHTML;
-          renderWeightedChart(kriteriaData, weightedNormalizedValues);
-        } catch (err) {
-          console.error("Gagal menghitung SAW:", err);
-          showToast(err.message, "error");
-          resultsContainer.innerHTML = `<p class="text-red-600 p-4 bg-red-100 rounded-lg shadow-md font-semibold">Error: ${err.message}</p>`;
-        } finally {
-          btn.disabled = false;
-          btn.innerText = "Mulai Perhitungan SAW";
-        }
-      });
-      return;
-    }
 
+            // --- Gabungkan Semua HTML & Tampilkan ---
+            resultsContainer.innerHTML =
+              initialTableHTML +
+              normalizedTableHTML +
+              weightedTableHTML +
+              rankingTableHTML +
+              printButtonHTML +
+              graphHTML;
+
+            // --- Render Grafik ---
+            renderWeightedChart(kriteriaData, weightedNormalizedValues);
+          } catch (err) {
+            console.error("Gagal menghitung SAW:", err);
+            showToast(err.message, "error");
+            resultsContainer.innerHTML = `<p class="text-red-600 p-4 bg-red-100 rounded-lg shadow-md font-semibold">Error: ${err.message}</p>`;
+          } finally {
+            btn.disabled = false;
+            btn.innerText = "Mulai Perhitungan SAW";
+          }
+        });
+
+      return;
+    } // Akhir dari if (page === "perhitungan")
+    
+
+    // ▼▼▼ BLOK BARU UNTUK BACKUP DATABASE ▼▼▼
     // ======================
     // BACKUP DATABASE (SUPERADMIN)
     // ======================
     if (page === "backup-db") {
+      // Cek role lagi di frontend
       if (user.role !== "superadmin") {
         container.innerHTML = '<p class="text-red-500 p-4 bg-red-100 rounded-lg shadow-md">Akses ditolak. Hanya superadmin.</p>';
         return;
       }
+
       container.innerHTML = `
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-3xl font-bold text-gray-800">Backup Data</h2>
-                <nav class="text-sm" aria-label="Breadcrumb">
-                  <ol class="list-none p-0 inline-flex">
-                    <li class="flex items-center"><span class="text-gray-500">Dashboard</span><i class="bi bi-chevron-right mx-2 text-gray-400"></i></li>
-                    <li class="flex items-center"><span class="text-gray-700 font-semibold">Backup Data</span></li>
-                  </ol>
-                </nav>
+                <h2 class="text-3xl font-bold text-gray-800">Backup Database</h2>
             </div>
-            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                 <p class="text-gray-700 mb-2">*Untuk menjaga dari kerusakan data, data hilang dan hal-hal yang tidak diinginkan silahkan melakukan backup berkala.</p>
-                 <p class="text-gray-700 mb-4">Untuk membackup data silahkan klik tombol dibawah.</p>
-                 <button id="btn-create-backup" class="bg-blue-600 text-white px-5 py-2 rounded-lg shadow-md hover:bg-blue-700 font-semibold transition-all duration-200 flex items-center justify-center">
-                    <i class="bi bi-plus-lg mr-2"></i> Back Up Data
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <p class="text-gray-700 mb-4">Klik tombol di bawah untuk mengunduh salinan cadangan (backup) seluruh database dalam format file .sql.</p>
+                <p class="text-sm text-yellow-700 bg-yellow-100 p-3 rounded-md mb-6">
+                    <strong>Perhatian:</strong> Proses ini mungkin memerlukan beberapa saat. Pastikan server backend memiliki 'mysqldump' yang terinstal dan dapat diakses. Jangan menutup halaman sampai file selesai diunduh.
+                </p>
+                <button id="btn-download-backup" class="w-full bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-green-700 font-semibold text-lg transition-all duration-200 flex items-center justify-center">
+                    <i class="bi bi-database-down mr-2"></i> Download Backup Database
                 </button>
             </div>
-            <div id="backupTableContainer" class="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div class="p-4 flex justify-between items-center">
-                     <div>
-                        <label for="show-entries" class="text-sm text-gray-600">Tampil</label>
-                        <select id="show-entries" class="border border-gray-300 rounded-md p-1.5 text-sm">
-                            <option value="10">10</option><option value="25">25</option><option value="50">50</option>
-                        </select>
-                        <span class="text-sm text-gray-600 ml-1">Data</span>
-                     </div>
-                     <div>
-                        <label for="search-box" class="text-sm text-gray-600 mr-2">Pencarian:</label>
-                        <input type="text" id="search-box" class="border border-gray-300 rounded-md p-1.5 text-sm">
-                     </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama File</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Opsi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="backup-table-body" class="bg-white divide-y divide-gray-200">
-                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Memuat data backup...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="p-4 flex justify-between items-center text-sm text-gray-600">
-                    <div id="table-info">Menampilkan 0 sampai 0 dari 0 data</div>
-                    <div>
-                        <button class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100">Sebelumnya</button>
-                        <span id="page-numbers" class="px-3 py-1 text-blue-600 font-bold">1</span>
-                        <button class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100">Selanjutnya</button>
-                    </div>
-                </div>
-            </div>
         `;
-      await loadBackupTable();
-      document.getElementById("btn-create-backup").addEventListener("click", async (e) => {
+
+      document.getElementById("btn-download-backup").addEventListener("click", async (e) => {
         const btn = e.currentTarget;
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner mr-2"></span> Sedang memproses...';
+        btn.innerHTML = '<span class="spinner mr-2"></span> Sedang memproses...'; // Tampilkan spinner
+
         try {
           const res = await fetch(`${API_BASE_URL}/backup/database`, {
-            method: 'POST',
+            method: 'GET',
             headers: { Authorization: `Bearer ${token}` }
           });
-          const result = await res.json();
-          if (!res.ok) throw new Error(result.message);
-          showToast(result.message || 'Backup berhasil dibuat!');
-          await loadBackupTable();
+
+          if (!res.ok) {
+            // Coba baca error sebagai JSON
+            const errData = await res.json().catch(() => ({ message: 'Gagal membuat backup. Status: ' + res.status }));
+            throw new Error(errData.message || 'Gagal membuat backup');
+          }
+
+          // Ambil nama file dari header Content-Disposition
+          const disposition = res.headers.get('content-disposition');
+          let filename = 'backup.sql';
+          if (disposition && disposition.indexOf('attachment') !== -1) {
+            const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+            const matches = filenameRegex.exec(disposition);
+            if (matches != null && matches[1]) {
+              filename = matches[1].replace(/['"]/g, '');
+            }
+          }
+
+          // Buat blob dari response
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          
+          // Buat link sementara untuk download
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Bersihkan
+          window.URL.revokeObjectURL(url);
+          a.remove();
+          
+          showToast('Backup database berhasil diunduh.');
+
         } catch (err) {
-          console.error('Gagal membuat backup:', err);
+          console.error('Gagal download backup:', err);
           showToast(`Error: ${err.message}`, 'error');
         } finally {
           btn.disabled = false;
-          btn.innerHTML = '<i class="bi bi-plus-lg mr-2"></i> Back Up Data';
+          btn.innerHTML = '<i class="bi bi-database-down mr-2"></i> Download Backup Database';
         }
       });
+
       return;
     }
+    // ▲▲▲ AKHIR BLOK BARU ▲▲▲
+
 
     // ======================
     // MANAJEMEN ADMIN
@@ -923,8 +1187,26 @@ window.loadContent = async (page) => {
           '<p class="text-red-500">Akses ditolak. Hanya superadmin.</p>';
         return;
       }
-      
-      // Tampilkan HTML dasar untuk halaman
+
+      const res = await fetch(`${API_BASE_URL}/admin`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const admins = await res.json();
+
+      const rows = admins
+        .map(
+          (a) => `
+            <tr class="border-b hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${a.username}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${a.role}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
+                <button onclick="showEditAdmin(${a.id},'${a.username}','${a.role}')" class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors">Edit</button>
+                <button onclick="deleteAdminClient(${a.id})" class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors">Hapus</button>
+              </td>
+            </tr>`
+        )
+        .join("");
+
       container.innerHTML = `
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold text-gray-800">Manajemen Admin</h2>
@@ -932,74 +1214,22 @@ window.loadContent = async (page) => {
                   <i class="bi bi-plus-lg mr-1"></i> Tambah Admin
                 </button>
             </div>
-            <div id="adminTableContainer" class="bg-white rounded-lg shadow-lg overflow-hidden"></div>
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+              <table class="min-w-full">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
+              </table>
+            </div>
             `;
-      
-      // Definisikan fungsi loadAdminTable (yang sudah diperbaiki)
-      async function loadAdminTable() {
-        const tableContainer = document.getElementById("adminTableContainer");
-        tableContainer.innerHTML = `<div class="p-4 text-center text-gray-500">Memuat data admin...</div>`;
-        try {
-          const res = await fetch(`${API_BASE_URL}/admin`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const admins = await res.json();
-          if (!res.ok) throw new Error(admins.message || 'Gagal memuat admin');
-
-          // === INI BAGIAN BARU ===
-          // 1. Ekstrak role unik dari data admin (cth: ["superadmin", "admin"])
-          const uniqueRoles = [...new Set(admins.map(a => a.role))];
-          // 2. Ubah menjadi format { value, label } untuk modal
-          const roleOptions = uniqueRoles.map(role => ({
-              value: role,
-              label: role.charAt(0).toUpperCase() + role.slice(1) // Membuat "admin" jadi "Admin"
-          }));
-          // === AKHIR BAGIAN BARU ===
-
-          const rows = admins
-            .map(
-              (a) => `
-                    <tr class="border-b hover:bg-gray-50">
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${a.username}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${a.role}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
-                        
-                        <button onclick='showEditAdmin(${a.id},"${a.username}","${a.role}", ${JSON.stringify(roleOptions)})' class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors">Edit</button>
-                        
-                        <button onclick="deleteAdminClient(${a.id})" class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors">Hapus</button>
-                      </td>
-                    </tr>`
-            )
-            .join("");
-
-          tableContainer.innerHTML = `
-                  <table class="min-w-full">
-                    <thead class="bg-gray-50">
-                      <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
-                  </table>
-                `;
-                
-            // === PERBAIKAN: Ganti addEventListener dengan .onclick agar bisa kirim parameter ===
-            document.getElementById("btnAddAdmin").onclick = () => showAddAdminModal(roleOptions);
-                
-        } catch (err) {
-          showToast(`Gagal memuat data admin: ${err.message}`, 'error');
-          tableContainer.innerHTML = `<p class="text-red-500 p-4">Gagal memuat data admin.</p>`;
-        }
-      }
-      
-      // Panggil fungsi loadAdminTable
-      await loadAdminTable(); 
-      
-      // Hapus baris addEventListener yang lama (jika ada), karena sudah diganti .onclick
-      // document.getElementById("btnAddAdmin").addEventListener("click", showAddAdminModal); // Baris ini tidak perlu lagi
-      
+      document
+        .getElementById("btnAddAdmin")
+        .addEventListener("click", showAddAdminModal);
       return;
     }
 
@@ -1021,22 +1251,45 @@ window.loadContent = async (page) => {
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   if (!container) return;
+
   const isSuccess = type === 'success';
   const bgColor = isSuccess ? 'bg-green-500' : 'bg-red-500';
-  const icon = isSuccess ? `<i class="bi bi-check-circle-fill"></i>` : `<i class="bi bi-exclamation-triangle-fill"></i>`;
+  const icon = isSuccess ?
+    `<i class="bi bi-check-circle-fill"></i>` :
+    `<i class="bi bi-exclamation-triangle-fill"></i>`;
+
   const toast = document.createElement('div');
-  toast.className = `flex items-center w-full max-w-xs p-4 text-white ${bgColor} rounded-lg shadow-lg transform transition-all translate-x-full opacity-0 duration-300 ease-out`;
-  toast.innerHTML = `
-        <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8">${icon}</div>
-        <div class="ml-3 text-sm font-medium">${message}</div>
-        <button type="button" class="ml-auto -mx-1.5 -my-1.5 p-1.5 inline-flex h-8 w-8 rounded-lg hover:bg-white hover:bg-opacity-20" aria-label="Close">&times;</button>
+  toast.className = `
+        flex items-center w-full max-w-xs p-4 text-white ${bgColor} 
+        rounded-lg shadow-lg transform transition-all 
+        translate-x-full opacity-0 duration-300 ease-out
     `;
+  toast.innerHTML = `
+        <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8">
+            ${icon}
+        </div>
+        <div class="ml-3 text-sm font-medium">${message}</div>
+        <button type="button" class="ml-auto -mx-1.5 -my-1.5 p-1.5 inline-flex h-8 w-8 rounded-lg hover:bg-white hover:bg-opacity-20" aria-label="Close">
+            &times;
+        </button>
+    `;
+
   container.prepend(toast);
-  setTimeout(() => { toast.classList.remove('translate-x-full'); toast.classList.remove('opacity-0'); }, 10);
+
+  // Animasi masuk
+  setTimeout(() => {
+    toast.classList.remove('translate-x-full');
+    toast.classList.remove('opacity-0');
+  }, 10);
+
   const removeToast = () => {
-    toast.classList.add('opacity-0'); toast.classList.add('scale-90');
-    setTimeout(() => { toast.remove(); }, 300);
+    toast.classList.add('opacity-0');
+    toast.classList.add('scale-90');
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
   };
+
   const timer = setTimeout(removeToast, 3000);
   toast.querySelector('button').addEventListener('click', () => {
     clearTimeout(timer);
@@ -1052,6 +1305,7 @@ function showConfirm(title, message) {
     const modal = document.getElementById("modal-container");
     modal.classList.remove("hidden");
     modal.classList.add("flex");
+
     modal.innerHTML = `
         <div class="bg-white rounded-lg shadow-xl w-full max-w-sm m-auto transform transition-all duration-300 scale-100">
             <div class="flex items-start justify-between p-5 border-b border-gray-200">
@@ -1059,21 +1313,44 @@ function showConfirm(title, message) {
                     <div class="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-red-100 sm:h-8 sm:w-8">
                         <i class="bi bi-exclamation-triangle-fill text-red-600"></i>
                     </div>
-                    <h3 class="ml-3 text-lg font-semibold text-gray-800">${title}</h3>
+                    <h3 class="ml-3 text-lg font-semibold text-gray-800">
+                        ${title}
+                    </h3>
                 </div>
                 <button class="btn-cancel text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
             </div>
-            <div class="p-6"><p class="text-sm text-gray-600">${message}</p></div>
+            
+            <div class="p-6">
+                <p class="text-sm text-gray-600">${message}</p>
+            </div>
+            
             <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                <button class="btn-cancel px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">Batal</button>
-                <button class="btn-confirm px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition font-semibold">Ya, Hapus</button>
+                <button class="btn-cancel px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">
+                    Batal
+                </button>
+                <button class="btn-confirm px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition font-semibold">
+                    Ya, Hapus
+                </button>
             </div>
         </div>
       `;
-    const close = () => { modal.classList.add("hidden"); modal.innerHTML = ""; };
-    modal.querySelector(".btn-confirm").onclick = () => { close(); resolve(true); };
+
+    const close = () => {
+      modal.classList.add("hidden");
+      modal.innerHTML = "";
+    };
+
+    modal.querySelector(".btn-confirm").onclick = () => {
+      close();
+      resolve(true);
+    };
+
+    // Tambahkan event listener untuk semua tombol "cancel"
     modal.querySelectorAll(".btn-cancel").forEach(btn => {
-      btn.onclick = () => { close(); resolve(false); };
+      btn.onclick = () => {
+        close();
+        resolve(false);
+      };
     });
   });
 }
@@ -1081,36 +1358,16 @@ function showConfirm(title, message) {
 // ============================
 // FUNGSI PROMPT MODAL (Pengganti Prompt)
 // ============================
-function showPrompt({ title, fields }) {
+function showPrompt({
+  title,
+  fields
+}) {
   return new Promise((resolve) => {
     const modal = document.getElementById("modal-container");
     modal.classList.remove("hidden");
     modal.classList.add("flex");
-    
-    // ▼▼▼ PERUBAHAN DIMULAI DI SINI ▼▼▼
-    const fieldsHTML = fields.map(field => {
-      // Jika tipenya 'select', buat dropdown
-      if (field.type === 'select') {
-        const optionsHTML = (field.options || []).map(opt =>
-          `<option value="${opt.value}" ${opt.value === field.value ? 'selected' : ''}>${opt.label}</option>`
-        ).join('');
-        
-        return `
-          <div>
-              <label for="${field.id}" class="block text-sm font-medium text-gray-700">${field.label}</label>
-              <select 
-                  id="${field.id}" 
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" 
-                  ${field.required ? 'required' : ''}
-              >
-                  ${optionsHTML}
-              </select>
-          </div>
-        `;
-      }
-      
-      // Jika tidak, buat input biasa (default)
-      return `
+
+    const fieldsHTML = fields.map(field => `
         <div>
             <label for="${field.id}" class="block text-sm font-medium text-gray-700">${field.label}</label>
             <input 
@@ -1122,9 +1379,7 @@ function showPrompt({ title, fields }) {
                 ${field.required ? 'required' : ''}
             >
         </div>
-      `;
-    }).join('');
-    // ▲▲▲ AKHIR PERUBAHAN ▲▲▲
+    `).join('');
 
     modal.innerHTML = `
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
@@ -1133,24 +1388,44 @@ function showPrompt({ title, fields }) {
                     <h3 class="text-xl font-semibold text-gray-800">${title}</h3>
                     <button type="button" class="btn-cancel text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
                 </div>
-                <div class="p-6 space-y-4">${fieldsHTML}</div>
+                
+                <div class="p-6 space-y-4">
+                    ${fieldsHTML}
+                </div>
+                
                 <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                    <button type="button" class="btn-cancel px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">Batal</button>
-                    <button type="submit" class="btn-confirm px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">Simpan</button>
+                    <button type="button" class="btn-cancel px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="btn-confirm px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">
+                        Simpan
+                    </button>
                 </div>
             </form>
         </div>
       `;
-    const close = () => { modal.classList.add("hidden"); modal.innerHTML = ""; };
+
+    const close = () => {
+      modal.classList.add("hidden");
+      modal.innerHTML = "";
+    };
+
     modal.querySelector("#prompt-form").onsubmit = (e) => {
       e.preventDefault();
       const results = {};
-      fields.forEach(field => { results[field.id] = document.getElementById(field.id).value; });
+      fields.forEach(field => {
+        results[field.id] = document.getElementById(field.id).value;
+      });
       close();
-      resolve(results);
+      resolve(results); // Mengembalikan objek berisi semua nilai form
     };
+
+    // Tambahkan event listener untuk semua tombol "cancel"
     modal.querySelectorAll(".btn-cancel").forEach(btn => {
-      btn.onclick = () => { close(); resolve(null); };
+      btn.onclick = () => {
+        close();
+        resolve(null); // Mengembalikan null jika dibatalkan
+      };
     });
   });
 }
@@ -1162,23 +1437,21 @@ function showPrompt({ title, fields }) {
 async function showAddAdminModal() {
   const result = await showPrompt({
     title: "Tambah Admin Baru",
-    fields: [
-      { id: "username", label: "Username Baru", required: true },
-      { id: "password", label: "Password", type: "password", required: true },
-      // ▼▼▼ PERUBAHAN DI SINI ▼▼▼
-      { 
-        id: "role", 
-        label: "Role", 
-        type: "select", // Ganti tipe menjadi 'select'
-        value: "admin", // Nilai default
-        required: true,
-        options: [ // Tambahkan opsi dropdown
-          { value: "admin", label: "Admin" },
-          { value: "superadmin", label: "Super Admin" }
-        ]
-      }
-      // ▲▲▲ AKHIR PERUBAHAN ▲▲▲
-    ]
+    fields: [{
+      id: "username",
+      label: "Username Baru",
+      required: true
+    }, {
+      id: "password",
+      label: "Password",
+      type: "password",
+      required: true
+    }, {
+      id: "role",
+      label: "Role",
+      value: "admin",
+      required: true
+    }, ]
   });
 
   if (!result) return; // Dibatalkan
@@ -1186,11 +1459,15 @@ async function showAddAdminModal() {
   try {
     const res = await fetch(`${API_BASE_URL}/admin`, {
       method: "POST",
-      headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
       body: JSON.stringify(result),
     });
     const j = await res.json();
     if (!res.ok) throw new Error(j.message);
+
     showToast(j.message || "Berhasil");
     loadContent("manajemen-admin");
   } catch (err) {
@@ -1201,43 +1478,47 @@ async function showAddAdminModal() {
 async function showEditAdmin(id, username, role) {
   const result = await showPrompt({
     title: "Edit Admin",
-    fields: [
-      { id: "username", label: "Username", value: username, required: true },
-      // ▼▼▼ PERUBAHAN DI SINI ▼▼▼
-      { 
-        id: "role", 
-        label: "Role", 
-        type: "select", // Ganti tipe menjadi 'select'
-        value: role, // Nilai default dari parameter
-        required: true,
-        options: [ // Tambahkan opsi dropdown
-          { value: "admin", label: "Admin" },
-          { value: "superadmin", label: "Super Admin" }
-        ]
-      },
-      // ▲▲▲ AKHIR PERUBAHAN ▲▲▲
-      { 
-        id: "password", 
-        label: "Password Baru (Opsional)", 
-        placeholder: "Kosongkan jika tidak diubah", 
-        type: "password" 
-      },
-    ]
+    fields: [{
+      id: "username",
+      label: "Username",
+      value: username,
+      required: true
+    }, {
+      id: "role",
+      label: "Role",
+      value: role,
+      required: true
+    }, {
+      id: "password",
+      label: "Password Baru (Opsional)",
+      placeholder: "Kosongkan jika tidak diubah",
+      type: "password"
+    }, ]
   });
 
   if (!result) return; // Dibatalkan
 
-  const payload = { username: result.username, role: result.role };
-  if (result.password) { payload.password = result.password; }
+  // Buat payload, hapus password jika kosong
+  const payload = {
+    username: result.username,
+    role: result.role
+  };
+  if (result.password) {
+    payload.password = result.password;
+  }
 
   try {
     const res = await fetch(`${API_BASE_URL}/admin/${id}`, {
       method: "PUT",
-      headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
       body: JSON.stringify(payload),
     });
     const j = await res.json();
     if (!res.ok) throw new Error(j.message);
+
     showToast(j.message || "Berhasil");
     loadContent("manajemen-admin");
   } catch (err) {
@@ -1246,8 +1527,12 @@ async function showEditAdmin(id, username, role) {
 }
 
 async function deleteAdminClient(id) {
-  const confirmed = await showConfirm("Hapus Admin", "Yakin ingin menghapus admin ini?");
+  const confirmed = await showConfirm(
+    "Hapus Admin",
+    "Yakin ingin menghapus admin ini?"
+  );
   if (!confirmed) return;
+
   try {
     const res = await fetch(`${API_BASE_URL}/admin/${id}`, {
       method: "DELETE",
@@ -1255,6 +1540,7 @@ async function deleteAdminClient(id) {
     });
     const j = await res.json();
     if (!res.ok) throw new Error(j.message);
+
     showToast(j.message || "Berhasil");
     loadContent("manajemen-admin");
   } catch (err) {
@@ -1263,140 +1549,70 @@ async function deleteAdminClient(id) {
 }
 
 // ============================
-// FUNGSI KHUSUS BACKUP
-// ============================
-async function loadBackupTable() {
-    const tableBody = document.getElementById("backup-table-body");
-    const tableInfo = document.getElementById("table-info");
-    if (!tableBody) return;
-    tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Memuat data backup...</td></tr>`;
-    try {
-        const res = await fetch(`${API_BASE_URL}/backup`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        const files = data.data || [];
-        if (!files.length) {
-            tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Belum ada file backup.</td></tr>`;
-            tableInfo.innerText = "Menampilkan 0 sampai 0 dari 0 data";
-            return;
-        }
-        const rows = files.map((file, index) => {
-            const { tanggal, waktu } = formatBackupDate(file.time);
-            return `
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${file.name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${tanggal}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${waktu}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
-                        <button class="px-3 py-1 text-xs font-medium text-white bg-green-500 rounded-md hover:bg-green-600 transition-colors" onclick="downloadBackup('${file.name}')">Download</button>
-                        <button class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors" onclick="deleteBackup('${file.name}')">Hapus</button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-        tableBody.innerHTML = rows;
-        tableInfo.innerText = `Menampilkan 1 sampai ${files.length} dari ${files.length} data`;
-    } catch (err) {
-        showToast(`Gagal memuat daftar backup: ${err.message}`, 'error');
-        tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Gagal memuat data.</td></tr>`;
-    }
-}
-
-function formatBackupDate(dateString) {
-    const date = new Date(dateString);
-    const optionsTanggal = { year: 'numeric', month: 'long', day: 'numeric' };
-    const optionsWaktu = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-    return {
-        tanggal: date.toLocaleDateString('id-ID', optionsTanggal),
-        waktu: date.toLocaleTimeString('id-ID', optionsWaktu).replace(/\./g, ':')
-    };
-}
-
-async function downloadBackup(filename) {
-    showToast(`Mempersiapkan download: ${filename}`, 'success');
-    try {
-        const res = await fetch(`${API_BASE_URL}/backup/${filename}`, {
-            method: 'GET',
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({ message: 'File tidak ditemukan atau rusak.' }));
-            throw new Error(errData.message);
-        }
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
-    } catch (err) {
-        showToast(`Gagal mengunduh file: ${err.message}`, 'error');
-    }
-}
-
-async function deleteBackup(filename) {
-    const confirmed = await showConfirm("Hapus Backup", `Yakin ingin menghapus file backup: ${filename}?`);
-    if (!confirmed) return;
-    try {
-        const res = await fetch(`${API_BASE_URL}/backup/${filename}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.message);
-        showToast(result.message || 'File backup berhasil dihapus.');
-        await loadBackupTable();
-    } catch (err) {
-        showToast(`Gagal menghapus file: ${err.message}`, 'error');
-    }
-}
-
-// ============================
 // FUNGSI RENDER GRAFIK HASIL
 // ============================
 function renderWeightedChart(kriteriaData, weightedData) {
   const ctx = document.getElementById('weightedChart');
-  if (!ctx) return;
-  const labels = kriteriaData.map(k => k.nama);
+  if (!ctx) return; // Jika canvas tidak ditemukan
+
+  const labels = kriteriaData.map(k => k.nama); // Nama Kriteria untuk sumbu X
+
+  // Siapkan dataset untuk setiap alternatif
   const datasets = weightedData.map((altData, index) => {
-    const scores = kriteriaData.map(k => altData[k.kode] || 0);
-    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+    const scores = kriteriaData.map(k => altData[k.kode] || 0); // Ambil nilai terbobot
+    // Beri warna berbeda untuk setiap garis
+    const colors = [
+      '#3B82F6', // blue-500
+      '#10B981', // green-500
+      '#F59E0B', // yellow-500
+      '#EF4444', // red-500
+      '#8B5CF6', // violet-500
+      '#EC4899' // pink-500
+    ];
     const color = colors[index % colors.length];
+
     return {
-      label: altData.alternatif_nama,
+      label: altData.alternatif_nama, // Nama Alternatif
       data: scores,
       borderColor: color,
-      backgroundColor: color + '20',
-      pointBackgroundColor: color,
+      backgroundColor: color + '20', // Warna area (sangat transparan)
+      pointBackgroundColor: color, // Warna titik
       pointHoverRadius: 6,
       pointHoverBorderWidth: 2,
       pointHoverBorderColor: '#ffffff',
-      fill: true,
-      tension: 0.3
+      fill: true, // Tampilkan area di bawah garis
+      tension: 0.3 // Membuat garis sedikit melengkung
     };
   });
+
+  // Hancurkan chart lama jika ada sebelum membuat yang baru
   if (myWeightedChart) {
     myWeightedChart.destroy();
   }
+
+  // Buat chart baru
   myWeightedChart = new Chart(ctx.getContext('2d'), {
-    type: 'line',
-    data: { labels: labels, datasets: datasets },
+    type: 'line', // Tipe grafik garis
+    data: {
+      labels: labels,
+      datasets: datasets
+    },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
+      maintainAspectRatio: false, // Biarkan chart mengisi container
       plugins: {
-        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+        legend: {
+          position: 'bottom', // Posisi legenda di bawah
+          labels: {
+            usePointStyle: true,
+            padding: 20,
+          }
+        },
         tooltip: {
           enabled: true,
           mode: 'index',
           intersect: false,
-          backgroundColor: '#1F2937',
+          backgroundColor: '#1F2937', // bg-gray-800
           titleFont: { size: 14, weight: 'bold' },
           bodyFont: { size: 12 },
           padding: 10,
@@ -1405,8 +1621,23 @@ function renderWeightedChart(kriteriaData, weightedData) {
         }
       },
       scales: {
-        y: { beginAtZero: true, grid: { color: '#E5E7EB' }, ticks: { color: '#4B5563' } },
-        x: { grid: { display: false }, ticks: { color: '#4B5563' } }
+        y: { // Pengaturan sumbu Y
+          beginAtZero: true,
+          grid: {
+            color: '#E5E7EB', // Warna grid abu-abu muda
+          },
+          ticks: {
+            color: '#4B5563' // Warna teks label
+          }
+        },
+        x: { // Pengaturan sumbu X
+          grid: {
+            display: false, // Sembunyikan grid vertikal
+          },
+          ticks: {
+            color: '#4B5563' // Warna teks label
+          }
+        }
       }
     }
   });

@@ -6,11 +6,11 @@ const token = localStorage.getItem("token");
 console.log("Token FE:", token);
 const user = JSON.parse(localStorage.getItem("user") || "null");
 
-let myWeightedChart = null; // Variabel global untuk menyimpan instance chart
+let myWeightedChart = null; // Variabel global untuk chart di 'Hasil Perhitungan'
+let myDashboardChart = null; // Variabel global untuk chart di 'Dashboard'
 
 // Jika belum login, redirect
 if (!token) {
-  // Pengecualian: alert() boleh di sini karena script lain mungkin belum dimuat
   alert("Sesi Anda berakhir. Silakan login ulang.");
   window.location.href = "login.html";
   throw new Error("Not authenticated");
@@ -40,7 +40,7 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 // ============================
 window.loadContent = async (page) => {
   const container = document.getElementById("content-container");
-  container.innerHTML = `<div class="p-8 text-gray-500">Memuat...</div>`;
+  container.innerHTML = `<div class="p-8 text-gray-500 dark:text-gray-400 text-center">Memuat...</div>`;
 
   try {
     // ======================
@@ -48,22 +48,87 @@ window.loadContent = async (page) => {
     // ======================
     if (page === "dashboard") {
       container.innerHTML = `
-        <h2 class="text-2xl font-bold mb-4">Dashboard</h2>
-        <p>Selamat datang, <b>${user.username}</b>! Role: <span class="text-blue-600 font-semibold">${user.role}</span></p>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
-          <div class="bg-blue-100 p-4 rounded-lg shadow">
-            <h3 class="font-bold text-blue-700">Alternatif</h3>
-            <p class="text-sm text-gray-600">Kelola data alternatif perusahaan.</p>
-          </div>
-          <div class="bg-green-100 p-4 rounded-lg shadow">
-            <h3 class="font-bold text-green-700">Kriteria</h3>
-            <p class="text-sm text-gray-600">Definisikan parameter penilaian.</p>
-          </div>
-          <div class="bg-yellow-100 p-4 rounded-lg shadow">
-            <h3 class="font-bold text-yellow-700">Perhitungan SAW</h3>
-            <p class="text-sm text-gray-600">Hitung hasil berdasarkan bobot.</p>
-          </div>
-        </div>`;
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
+            </div>
+            <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
+            <div id="dashboard-content" class="text-center p-8 text-indigo-600 dark:text-indigo-400">
+                <div class="spinner mr-2" style="display:inline-block; width: 1.5rem; height: 1.5rem; border: 3px solid rgba(99, 102, 241, 0.3); border-radius: 50%; border-top-color: #6366F1;"></div>
+                Memuat data dashboard...
+            </div>
+        `;
+      try {
+        const [altRes, kritRes, calcRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/perhitungan/hitung`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        const altData = await altRes.json();
+        const kritData = await kritRes.json();
+        if (!calcRes.ok) {
+            throw new Error("Data perhitungan belum siap.");
+        }
+        const calcData = await calcRes.json();
+        const totalAlternatif = (altData.data || altData || []).length;
+        const totalKriteria = (kritData.data || kritData || []).length;
+        const ranking = calcData.ranking || [];
+        const peringkatSatu = ranking.find(r => r.rank === 1) || { alternatif_nama: "Belum Ada", nilai: 0 };
+        const dashboardHTML = `
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
+            </div>
+            <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 border-green-500">
+                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Peringkat #1</h3>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white truncate" title="${peringkatSatu.alternatif_nama}">${peringkatSatu.alternatif_nama}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Skor Akhir: ${peringkatSatu.nilai.toFixed(4)}</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 border-blue-500">
+                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Total Alternatif</h3>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-white">${totalAlternatif}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Total alternatif yang dievaluasi</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 border-yellow-500">
+                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Total Kriteria</h3>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-white">${totalKriteria}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Total kriteria penilaian</p>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Grafik Skor Akhir Alternatif</h3>
+                <div style="height: 350px;">
+                    <canvas id="dashboard-chart"></canvas>
+                </div>
+            </div>
+            <div class="cetak-sembunyi">
+                <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Aksi Cepat</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <button onclick="loadContent('penilaian')" class="bg-blue-600 text-white p-4 rounded-lg shadow-md hover:bg-blue-700 transition font-semibold flex items-center justify-center">
+                        <i class="bi bi-pencil-square mr-2"></i> Input Penilaian
+                    </button>
+                    <button onclick="loadContent('perhitungan')" class="bg-green-600 text-white p-4 rounded-lg shadow-md hover:bg-green-700 transition font-semibold flex items-center justify-center">
+                        <i class="bi bi-bar-chart-line-fill mr-2"></i> Lihat Hasil Detail
+                    </button>
+                    <button onclick="loadContent('kriteria')" class="bg-gray-600 text-white p-4 rounded-lg shadow-md hover:bg-gray-700 transition font-semibold flex items-center justify-center">
+                        <i class="bi bi-gear-fill mr-2"></i> Atur Kriteria
+                    </button>
+                </div>
+            </div>
+        `;
+        container.innerHTML = dashboardHTML;
+        renderDashboardChart(ranking);
+      } catch (err) {
+        console.error("Gagal memuat dashboard:", err);
+        container.innerHTML = `
+            <h2 class="text-2xl font-bold mb-4 dark:text-white">Dashboard</h2>
+            <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
+            <div class="p-4 bg-yellow-100 text-yellow-800 rounded-lg shadow-md">
+                <strong>Data Perhitungan Belum Siap.</strong><br>
+                <span class="text-sm">Anda perlu mengisi halaman "Nilai Alternatif" terlebih dahulu agar hasil perhitungan bisa tampil di dashboard.</span>
+            </div>
+        `;
+      }
       return;
     }
 
@@ -73,58 +138,49 @@ window.loadContent = async (page) => {
     if (page === "alternatif") {
       container.innerHTML = `
             <div class="flex justify-between items-center mb-4">
-              <h2 class="text-2xl font-bold text-gray-800">Data Alternatif</h2>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Data Alternatif</h2>
               <button id="btnAddAlt" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition shadow-sm font-medium">
                 <i class="bi bi-plus-lg mr-1"></i> Tambah Alternatif
               </button>
             </div>
             <div id="altTable" class="overflow-x-auto"></div>
             `;
-
       const tableContainer = document.getElementById("altTable");
       const btnAdd = document.getElementById("btnAddAlt");
       await loadAlternatifTable();
       btnAdd.addEventListener("click", () => showAltModal());
-
       async function loadAlternatifTable() {
         try {
-          const res = await fetch(`${API_BASE_URL}/alternatif`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const res = await fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } });
           const data = await res.json();
-          const alternatifs = (data.data || data || []).sort((a, b) => a.id - b.id); 
+          const alternatifs = (data.data || data || []).sort((a, b) => a.id - b.id);
           if (!alternatifs.length) {
-            tableContainer.innerHTML = `<p class="text-gray-500">Belum ada data alternatif.</p>`;
+            tableContainer.innerHTML = `<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg text-gray-500 dark:text-gray-400 text-center">Belum ada data alternatif.</div>`;
             return;
           }
-          const rows = alternatifs
-            .map(
-              (a) =>
-              `
-                    <tr class="border-b hover:bg-gray-50">
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${a.kode_alternatif}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${a.nama_periode}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${a.deskripsi || "-"}</td>
+          const rows = alternatifs.map((a) => `
+                    <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${a.kode_alternatif}</td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${a.nama_periode}</td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${a.deskripsi || "-"}</td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
-                        <button class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors" onclick='editAlt(${JSON.stringify(a)})'>Edit</button>
-                        <button class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors" onclick='deleteAlt(${a.id})'>Hapus</button>
+                        <button class="px-3 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-md hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-300 dark:hover:bg-yellow-800 transition-colors" onclick='editAlt(${JSON.stringify(a)})'>Edit</button>
+                        <button class="px-3 py-1 text-xs font-medium text-red-800 bg-red-100 rounded-md hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 transition-colors" onclick='deleteAlt(${a.id})'>Hapus</button>
                       </td>
                     </tr>
-                  `
-            )
-            .join("");
+                  `).join("");
           tableContainer.innerHTML = `
-                <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                   <table class="min-w-full">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
                       <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Periode</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Kode</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama Periode</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Deskripsi</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
                   </table>
                 </div>
               `;
@@ -138,29 +194,29 @@ window.loadContent = async (page) => {
         modal.classList.remove("hidden");
         modal.classList.add("flex");
         modal.innerHTML = `
-              <div class="bg-white rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
-                  <div class="flex justify-between items-center p-5 border-b border-gray-200">
-                      <h3 class="text-xl font-semibold text-gray-800">${data.id ? "Edit" : "Tambah"} Alternatif</h3>
-                      <button onclick="closeAltModal()" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
+                  <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
+                      <h3 class="text-xl font-semibold text-gray-800 dark:text-white">${data.id ? "Edit" : "Tambah"} Alternatif</h3>
+                      <button onclick="closeAltModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white text-3xl leading-none">&times;</button>
                   </div>
                   <form id="altForm">
                       <div class="p-6 space-y-4">
                           <input type="hidden" id="altId" value="${data.id || ""}">
                           <div>
-                              <label for="kodeAlt" class="block text-sm font-medium text-gray-700">Kode Alternatif</label>
-                              <input type="text" id="kodeAlt" value="${data.kode_alternatif || ""}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                              <label for="kodeAlt" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kode Alternatif</label>
+                              <input type="text" id="kodeAlt" value="${data.kode_alternatif || ""}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
                           </div>
                           <div>
-                              <label for="namaAlt" class="block text-sm font-medium text-gray-700">Nama Periode</label>
-                              <input type="text" id="namaAlt" value="${data.nama_periode || ""}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                              <label for="namaAlt" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Periode</label>
+                              <input type="text" id="namaAlt" value="${data.nama_periode || ""}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
                           </div>
                           <div>
-                              <label for="descAlt" class="block text-sm font-medium text-gray-700">Deskripsi</label>
-                              <textarea id="descAlt" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500">${data.deskripsi || ""}</textarea>
+                              <label for="descAlt" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Deskripsi</label>
+                              <textarea id="descAlt" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">${data.deskripsi || ""}</textarea>
                           </div>
                       </div>
-                      <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                          <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition" onclick="closeAltModal()">Batal</button>
+                      <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                          <button type="button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition" onclick="closeAltModal()">Batal</button>
                           <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">Simpan</button>
                       </div>
                   </form>
@@ -225,19 +281,17 @@ window.loadContent = async (page) => {
     if (page === "kriteria") {
       container.innerHTML = `
         <div class="flex justify-between items-center mb-4">
-          <h2 id="pageTitle" class="text-2xl font-bold text-gray-800">Data Kriteria</h2>
+          <h2 id="pageTitle" class="text-2xl font-bold text-gray-800 dark:text-white">Data Kriteria</h2>
           <button id="btnAddKrit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition shadow-sm font-medium">
             <i class="bi bi-plus-lg mr-1"></i> Tambah Kriteria
           </button>
         </div>
         <div id="kritTable" class="overflow-x-auto"></div>
       `;
-
       const tableContainer = document.getElementById("kritTable");
       const btnAdd = document.getElementById("btnAddKrit");
       const pageTitle = document.getElementById("pageTitle");
       window.currentKriteriaId = null;
-
       window.loadKriteriaTable = async function () {
         pageTitle.innerText = "Data Kriteria";
         try {
@@ -247,17 +301,17 @@ window.loadContent = async (page) => {
           const data = await res.json();
           const kriterias = (Array.isArray(data) ? data : data.data || []).sort((a,b) => a.id - b.id);
           if (!kriterias.length) {
-            tableContainer.innerHTML = `<p class="text-gray-500">Belum ada data kriteria.</p>`;
+            tableContainer.innerHTML = `<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg text-gray-500 dark:text-gray-400 text-center">Belum ada data kriteria.</div>`;
             return;
           }
           const rows = kriterias
             .map(
               (k) => `
-                <tr class="border-b hover:bg-gray-50 transition">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${k.kode}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${k.nama}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${parseFloat(k.bobot)}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${k.kode}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${k.nama}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${parseFloat(k.bobot)}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${k.tipe.toLowerCase() === 'benefit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
                       ${k.tipe}
                     </span>
@@ -275,18 +329,18 @@ window.loadContent = async (page) => {
             )
             .join("");
           tableContainer.innerHTML = `
-              <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                 <table class="min-w-full">
-                  <thead class="bg-gray-50">
+                  <thead class="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Kriteria</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bobot</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
-                      <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Kode</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama Kriteria</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bobot</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tipe</th>
+                      <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
+                  <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
                 </table>
               </div>
               `;
@@ -298,7 +352,7 @@ window.loadContent = async (page) => {
       window.openSubKriteria = async function (id, namaKriteria) {
         window.currentKriteriaId = id;
         const kriteriaId = id;
-        tableContainer.innerHTML = `<div class="p-4 text-center text-indigo-500">Memuat sub kriteria...</div>`;
+        tableContainer.innerHTML = `<div class="p-4 text-center text-indigo-500 dark:text-indigo-400">Memuat sub kriteria...</div>`;
         pageTitle.innerText = `Sub Kriteria - ${namaKriteria}`;
         try {
           const res = await fetch(
@@ -316,10 +370,11 @@ window.loadContent = async (page) => {
             subkrits
             .map(
               (s, i) => `
-                <tr class="border-b hover:bg-gray-50 transition">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${i + 1}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${s.nama}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${s.nilai}</td>
+                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${i + 1}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${s.nama}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${s.nilai}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${s.keterangan || '-'}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
                     <button class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors"
                       onclick='showSubKritModal(${JSON.stringify({ ...s, kriteria_id: kriteriaId })})'>Edit</button>
@@ -330,9 +385,9 @@ window.loadContent = async (page) => {
                 `
             )
             .join("") :
-            `<tr><td colspan="4" class="text-center text-gray-500 py-4">Belum ada sub kriteria.</td></tr>`;
+            `<tr><td colspan="5" class="text-center text-gray-500 dark:text-gray-400 py-4">Belum ada sub kriteria.</td></tr>`;
           tableContainer.innerHTML = `
-                <div class="mb-4 flex items-center space-x-2">
+                <div class="mb-4 flex items-center space-x-2 cetak-sembunyi">
                   <button class="bg-gray-600 text-white px-3 py-2 rounded-md hover:bg-gray-700 text-sm transition" onclick="loadKriteriaTable()">
                     <i class="bi bi-arrow-left mr-1"></i> Kembali
                   </button>
@@ -341,17 +396,18 @@ window.loadContent = async (page) => {
                     <i class="bi bi-plus-lg mr-1"></i> Tambah Sub Kriteria
                   </button>
                 </div>
-                <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                   <table class="min-w-full">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
                       <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sub Kriteria</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sub Kriteria</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nilai</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Keterangan</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
                   </table>
                 </div>
               `;
@@ -372,26 +428,30 @@ window.loadContent = async (page) => {
           return;
         }
         modal.innerHTML = `
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
-                <div class="flex justify-between items-center p-5 border-b border-gray-200">
-                    <h3 class="text-xl font-semibold text-gray-800">${title}</h3>
-                    <button onclick="closeSubKritModal()" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
+                <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white">${title}</h3>
+                    <button onclick="closeSubKritModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white text-3xl leading-none">&times;</button>
                 </div>
                 <form id="subKritForm">
                     <div class="p-6 space-y-4">
                         <input type="hidden" id="subKritId" value="${data.id || ""}">
                         <input type="hidden" id="kriteriaIdInput" value="${kriteriaId}">
                         <div>
-                            <label for="namaSubKrit" class="block text-sm font-medium text-gray-700">Nama Sub Kriteria</label>
-                            <input type="text" id="namaSubKrit" value="${data.nama || ""}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <label for="namaSubKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Sub Kriteria</label>
+                            <input type="text" id="namaSubKrit" value="${data.nama || ""}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
                         </div>
                         <div>
-                            <label for="nilaiSubKrit" class="block text-sm font-medium text-gray-700">Nilai</label>
-                            <input type="number" id="nilaiSubKrit" value="${data.nilai || ""}" step="1" min="1" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <label for="keteranganSubKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Keterangan (Opsional)</label>
+                            <textarea id="keteranganSubKrit" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" rows="3">${data.keterangan || ""}</textarea>
+                        </div>
+                        <div>
+                            <label for="nilaiSubKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nilai</label>
+                            <input type="number" id="nilaiSubKrit" value="${data.nilai || ""}" step="1" min="1" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
                         </div>
                     </div>
-                    <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                        <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition" onclick="closeSubKritModal()">Batal</button>
+                    <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                        <button type="button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition" onclick="closeSubKritModal()">Batal</button>
                         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">Simpan</button>
                     </div>
                 </form>
@@ -411,6 +471,7 @@ window.loadContent = async (page) => {
           kriteria_id: parseInt(kriteria_id),
           nama: document.getElementById("namaSubKrit").value,
           nilai: parseInt(document.getElementById("nilaiSubKrit").value),
+          keterangan: document.getElementById("keteranganSubKrit").value || null
         };
         const url = id ? `${API_BASE_URL}/subkriteria/${id}` : `${API_BASE_URL}/subkriteria`;
         const method = id ? "PUT" : "POST";
@@ -475,36 +536,36 @@ window.loadContent = async (page) => {
         modal.classList.remove("hidden");
         modal.classList.add("flex");
         modal.innerHTML = `
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
-                <div class="flex justify-between items-center p-5 border-b border-gray-200">
-                    <h3 class="text-xl font-semibold text-gray-800">${data.id ? "Edit" : "Tambah"} Kriteria</h3>
-                    <button onclick="closeKritModal()" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
+                <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white">${data.id ? "Edit" : "Tambah"} Kriteria</h3>
+                    <button onclick="closeKritModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white text-3xl leading-none">&times;</button>
                 </div>
                 <form id="kritForm">
                     <div class="p-6 space-y-4">
                         <input type="hidden" id="kritId" value="${data.id || ""}">
                         <div>
-                            <label for="kodeKrit" class="block text-sm font-medium text-gray-700">Kode Kriteria</label>
-                            <input type="text" id="kodeKrit" value="${data.kode || ""}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <label for="kodeKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kode Kriteria</label>
+                            <input type="text" id="kodeKrit" value="${data.kode || ""}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
                         </div>
                         <div>
-                            <label for="namaKrit" class="block text-sm font-medium text-gray-700">Nama Kriteria</label>
-                            <input type="text" id="namaKrit" value="${data.nama || ""}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <label for="namaKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Kriteria</label>
+                            <input type="text" id="namaKrit" value="${data.nama || ""}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
                         </div>
                         <div>
-                            <label for="bobotKrit" class="block text-sm font-medium text-gray-700">Bobot</label>
-                            <input type="number" id="bobotKrit" value="${parseFloat(data.bobot) || ""}" step="0.01" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <label for="bobotKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Bobot</label>
+                            <input type="number" id="bobotKrit" value="${parseFloat(data.bobot) || ""}" step="0.01" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
                         </div>
                         <div>
-                            <label for="tipeKrit" class="block text-sm font-medium text-gray-700">Tipe</label>
-                            <select id="tipeKrit" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <label for="tipeKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipe</label>
+                            <select id="tipeKrit" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="Benefit" ${data.tipe === "Benefit" ? "selected" : ""}>Benefit</option>
                                 <option value="Cost" ${data.tipe === "Cost" ? "selected" : ""}>Cost</option>
                             </select>
                         </div>
                     </div>
-                    <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                        <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition" onclick="closeKritModal()">Batal</button>
+                    <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                        <button type="button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition" onclick="closeKritModal()">Batal</button>
                         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">Simpan</button>
                     </div>
                 </form>
@@ -552,7 +613,7 @@ window.loadContent = async (page) => {
     // PENILAIAN
     // ======================
     if (page === "penilaian") {
-      container.innerHTML = `<h2 class="text-2xl font-bold mb-4">Penilaian Alternatif</h2><div id="penilaian-loader" class="text-gray-600">Memuat data...</div>`;
+      container.innerHTML = `<h2 class="text-2xl font-bold mb-4 dark:text-white">Penilaian Alternatif</h2><div id="penilaian-loader" class="text-gray-600 dark:text-gray-400">Memuat data...</div>`;
       const loader = document.getElementById("penilaian-loader");
       try {
         loader.innerText = "Memuat alternatif...";
@@ -588,7 +649,7 @@ window.loadContent = async (page) => {
           }
         });
         loader.innerText = "Merender tabel...";
-        const tableHeaders = kriterias.map((k) => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${k.nama}</th>`).join("");
+        const tableHeaders = kriterias.map((k) => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">${k.nama}</th>`).join("");
         const tableRows = alternatifs
           .map((a, index) => {
             const kriteriaCells = kriterias
@@ -597,9 +658,9 @@ window.loadContent = async (page) => {
                 const currentValue = penilaianMap.get(`${a.id}-${k.id}`);
                 const options = subKriterias.map((s) => `<option value="${s.nilai}" ${s.nilai == currentValue ? "selected" : ""}>${s.nama}</option>`).join("");
                 return `
-                        <td class="px-4 py-2 border-b">
+                        <td class="px-4 py-2 border-b dark:border-gray-700">
                             <select 
-                                class="min-w-[160px] p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                class="min-w-[160px] p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 data-alt-id="${a.id}" 
                                 data-krit-id="${k.id}"
                             >
@@ -611,9 +672,9 @@ window.loadContent = async (page) => {
               })
               .join("");
             return `
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">${index + 1}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${a.nama_periode} (${a.deskripsi || "Tidak ada deskripsi"})</td>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white text-center">${index + 1}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200">${a.nama_periode} (${a.deskripsi || "Tidak ada deskripsi"})</td>
                         ${kriteriaCells}
                     </tr>
                     `;
@@ -621,27 +682,27 @@ window.loadContent = async (page) => {
           .join("");
         container.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800">Penilaian Alternatif</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Penilaian Alternatif</h2>
                     <nav class="text-sm" aria-label="Breadcrumb">
                       <ol class="list-none p-0 inline-flex">
                         <li class="flex items-center">
-                          <span class="text-gray-500">Dashboard</span> <svg class="fill-current w-3 h-3 mx-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M285.476 272.971L91.132 467.314c-9.373 9.373-24.569 9.373-33.941 0l-22.667-22.667c-9.357-9.357-9.375-24.522-.04-33.901L188.505 256 34.484 101.255c-9.335-9.379-9.317-24.544.04-33.901l22.667-22.667c9.373-9.373 24.569-9.373 33.941 0L285.475 239.03c9.373 9.372 9.373 24.568.001 33.941z"/></svg>
+                          <span class="text-gray-500 dark:text-gray-400">Dashboard</span> <svg class="fill-current w-3 h-3 mx-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M285.476 272.971L91.132 467.314c-9.373 9.373-24.569 9.373-33.941 0l-22.667-22.667c-9.357-9.357-9.375-24.522-.04-33.901L188.505 256 34.484 101.255c-9.335-9.379-9.317-24.544.04-33.901l22.667-22.667c9.373-9.373 24.569-9.373 33.941 0L285.475 239.03c9.373 9.372 9.373 24.568.001 33.941z"/></svg>
                         </li>
                         <li class="flex items-center">
-                          <span class="text-gray-700 font-semibold">Nilai Alternatif</span>
+                          <span class="text-gray-700 dark:text-gray-200 font-semibold">Nilai Alternatif</span>
                         </li>
                       </ol>
                     </nav>
                 </div>
-                <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                     <form id="penilaian-form">
                         <div class="overflow-x-auto">
                             <table class="min-w-full">
-                                <thead class="bg-gray-50">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
                                     <tr>
-                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Alternatif</th>
-                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colspan="${kriterias.length}">
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama Alternatif</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" colspan="${kriterias.length}">
                                             Nilai Kriteria
                                         </th>
                                     </tr>
@@ -651,12 +712,12 @@ window.loadContent = async (page) => {
                                         ${tableHeaders}
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     ${tableRows}
                                 </tbody>
                             </table>
                         </div>
-                        <div class="p-4 bg-gray-50 border-t">
+                        <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700">
                             <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150">
                                 Simpan Penilaian
                             </button>
@@ -717,13 +778,13 @@ window.loadContent = async (page) => {
     if (page === "perhitungan") {
       container.innerHTML = `
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-3xl font-bold text-gray-800">Hasil Perhitungan</h2>
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Hasil Perhitungan</h2>
             </div>
-            <button id="run-saw-btn" class="mb-6 w-full bg-indigo-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl font-semibold text-lg transition-all duration-200">
+            <button id="run-saw-btn" class="mb-6 w-full bg-indigo-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl font-semibold text-lg transition-all duration-200 cetak-sembunyi">
                 Mulai Perhitungan SAW
             </button>
             <div id="results-container" class="space-y-8">
-                <p class="text-gray-600 text-center p-4 bg-white rounded-lg shadow-md">
+                <p class="text-gray-600 dark:text-gray-400 text-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     Klik tombol di atas untuk memulai proses perhitungan.
                 </p>
             </div>
@@ -734,7 +795,7 @@ window.loadContent = async (page) => {
         btn.disabled = true;
         btn.innerText = "Menghitung...";
         resultsContainer.innerHTML = `
-                <div class="p-8 text-center text-indigo-600 text-xl font-semibold bg-white rounded-lg shadow-lg">
+                <div class="p-8 text-center text-indigo-600 dark:text-indigo-400 text-xl font-semibold bg-white dark:bg-gray-800 rounded-lg shadow-lg">
                     Sedang memproses perhitungan...
                 </div>`;
         try {
@@ -750,19 +811,19 @@ window.loadContent = async (page) => {
           const weightedNormalizedValues = data.weightedNormalizedValues || [];
           const ranking = data.ranking || [];
           const createTableHTML = (title, headers, rowsData, dataExtractor, rowClassCallback = null) => {
-            const headerHTML = headers.map(h => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${h}</th>`).join('');
+            const headerHTML = headers.map(h => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">${h}</th>`).join('');
             const bodyHTML = rowsData.map((row, index) => {
-              const rowClass = rowClassCallback ? rowClassCallback(row) : 'hover:bg-gray-50';
-              const cellsHTML = headers.map(headerKey => `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${dataExtractor(row, headerKey, index)}</td>`).join('');
+              const rowClass = rowClassCallback ? rowClassCallback(row) : 'hover:bg-gray-50 dark:hover:bg-gray-700';
+              const cellsHTML = headers.map(headerKey => `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${dataExtractor(row, headerKey, index)}</td>`).join('');
               return `<tr class="${rowClass}">${cellsHTML}</tr>`;
             }).join('');
             return `
-                  <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-                      <h3 class="text-xl font-bold text-gray-800 p-5 border-b border-gray-200">${title}</h3>
+                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                      <h3 class="text-xl font-bold text-gray-800 dark:text-white p-5 border-b border-gray-200 dark:border-gray-700">${title}</h3>
                       <div class="overflow-x-auto">
                           <table class="min-w-full">
-                              <thead class="bg-gray-50"><tr>${headerHTML}</tr></thead>
-                              <tbody class="bg-white divide-y divide-gray-200">${bodyHTML}</tbody>
+                              <thead class="bg-gray-50 dark:bg-gray-700"><tr>${headerHTML}</tr></thead>
+                              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${bodyHTML}</tbody>
                           </table>
                       </div>
                   </div>`;
@@ -771,41 +832,41 @@ window.loadContent = async (page) => {
           const kriteriaHeadersWithBobot = ['No', 'Nama Alternatif', ...kriteriaData.map(k => `${k.nama} (${k.kode}) (Bobot: ${k.bobot_normalisasi.toFixed(2)})`)];
           const initialExtractor = (row, headerKey, index) => {
             if (headerKey === "No") return index + 1;
-            if (headerKey === "Nama Alternatif") return row.alternatif_nama;
+            if (headerKey === "Nama Alternatif") return `<span class="font-medium text-gray-900 dark:text-white">${row.alternatif_nama}</span>`;
             const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
-            return row[kriteriaCode] ?.toFixed(3) ?? "N/A";
+            return row[kriteriaCode]?.toFixed(3) ?? "N/A";
           };
           const normalizedExtractor = (row, headerKey, index) => {
             if (headerKey === "No") return index + 1;
-            if (headerKey === "Nama Alternatif") return row.alternatif_nama;
+            if (headerKey === "Nama Alternatif") return `<span class="font-medium text-gray-900 dark:text-white">${row.alternatif_nama}</span>`;
             const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
-            return row[kriteriaCode] ?.toFixed(3) ?? "N/A";
+            return row[kriteriaCode]?.toFixed(3) ?? "N/A";
           };
           const weightedExtractor = (row, headerKey, index) => {
             if (headerKey === "No") return index + 1;
-            if (headerKey === "Nama Alternatif") return row.alternatif_nama;
+            if (headerKey === "Nama Alternatif") return `<span class="font-medium text-gray-900 dark:text-white">${row.alternatif_nama}</span>`;
             const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
-            return row[kriteriaCode] ?.toFixed(3) ?? "N/A";
+            return row[kriteriaCode]?.toFixed(3) ?? "N/A";
           };
           const rankingHeaders = ["Ranking", "Nama Alternatif", "Skor Akhir (V)"];
           const rankingExtractor = (row, headerKey) => {
-            if (headerKey === "Ranking") return `<span class="font-bold text-lg ${row.rank === 1 ? 'text-green-600' : 'text-gray-900'}">${row.rank}</span>`;
-            if (headerKey === "Nama Alternatif") return row.alternatif_nama;
-            if (headerKey === "Skor Akhir (V)") return `<span class="font-semibold text-gray-900">${row.nilai.toFixed(4)}</span>`;
+            if (headerKey === "Ranking") return `<span class="font-bold text-lg ${row.rank === 1 ? 'text-green-600' : 'text-gray-900 dark:text-white'}">${row.rank}</span>`;
+            if (headerKey === "Nama Alternatif") return `<span class="font-medium text-gray-900 dark:text-white">${row.alternatif_nama}</span>`;
+            if (headerKey === "Skor Akhir (V)") return `<span class="font-semibold text-gray-900 dark:text-white">${row.nilai.toFixed(4)}</span>`;
             return "N/A";
           };
-          const rankingRowStyler = (row) => (row.rank === 1 ? 'bg-green-50 font-semibold' : 'hover:bg-gray-50');
+          const rankingRowStyler = (row) => (row.rank === 1 ? 'bg-green-50 dark:bg-green-900' : 'hover:bg-gray-50 dark:hover:bg-gray-700');
           const initialTableHTML = createTableHTML("Nilai Awal (X)", kriteriaHeaders, initialValues, initialExtractor);
           const normalizedTableHTML = createTableHTML("Nilai Normalisasi (R)", kriteriaHeadersWithBobot, normalizedValues, normalizedExtractor);
           const weightedTableHTML = createTableHTML("Nilai Normalisasi Terbobot (W * R)", kriteriaHeaders, weightedNormalizedValues, weightedExtractor);
           const rankingTableHTML = createTableHTML("Hasil Peringkat (V)", rankingHeaders, ranking, rankingExtractor, rankingRowStyler);
           const printButtonHTML = `
-                <div class="mt-6 p-4 bg-green-600 rounded-lg shadow-lg text-center cursor-pointer hover:bg-green-700 transition-all duration-200" onclick="window.print()">
+                <div class="mt-6 p-4 bg-green-600 rounded-lg shadow-lg text-center cursor-pointer hover:bg-green-700 transition-all duration-200 cetak-sembunyi" onclick="window.print()">
                     <button class="text-white font-bold text-lg"><i class="bi bi-printer-fill mr-2"></i>Cetak Hasil</button>
                 </div>`;
           const graphHTML = `
-                <div class="bg-white rounded-lg shadow-lg mt-8">
-                     <h3 class="text-xl font-bold text-gray-800 p-5 border-b border-gray-200">Grafik Nilai Terbobot</h3>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg mt-8 cetak-sembunyi">
+                     <h3 class="text-xl font-bold text-gray-800 dark:text-white p-5 border-b border-gray-200 dark:border-gray-700">Grafik Nilai Terbobot</h3>
                      <div class="p-4" style="height: 400px;">
                          <canvas id="weightedChart"></canvas>
                      </div>
@@ -834,57 +895,57 @@ window.loadContent = async (page) => {
       }
       container.innerHTML = `
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-3xl font-bold text-gray-800">Backup Data</h2>
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Backup Data</h2>
                 <nav class="text-sm" aria-label="Breadcrumb">
                   <ol class="list-none p-0 inline-flex">
-                    <li class="flex items-center"><span class="text-gray-500">Dashboard</span><i class="bi bi-chevron-right mx-2 text-gray-400"></i></li>
-                    <li class="flex items-center"><span class="text-gray-700 font-semibold">Backup Data</span></li>
+                    <li class="flex items-center"><span class="text-gray-500 dark:text-gray-400">Dashboard</span><i class="bi bi-chevron-right mx-2 text-gray-400"></i></li>
+                    <li class="flex items-center"><span class="text-gray-700 dark:text-gray-200 font-semibold">Backup Data</span></li>
                   </ol>
                 </nav>
             </div>
-            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                 <p class="text-gray-700 mb-2">*Untuk menjaga dari kerusakan data, data hilang dan hal-hal yang tidak diinginkan silahkan melakukan backup berkala.</p>
-                 <p class="text-gray-700 mb-4">Untuk membackup data silahkan klik tombol dibawah.</p>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                 <p class="text-gray-700 dark:text-gray-300 mb-2">*Untuk menjaga dari kerusakan data, data hilang dan hal-hal yang tidak diinginkan silahkan melakukan backup berkala.</p>
+                 <p class="text-gray-700 dark:text-gray-300 mb-4">Untuk membackup data silahkan klik tombol dibawah.</p>
                  <button id="btn-create-backup" class="bg-blue-600 text-white px-5 py-2 rounded-lg shadow-md hover:bg-blue-700 font-semibold transition-all duration-200 flex items-center justify-center">
                     <i class="bi bi-plus-lg mr-2"></i> Back Up Data
                 </button>
             </div>
-            <div id="backupTableContainer" class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div id="backupTableContainer" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                 <div class="p-4 flex justify-between items-center">
                      <div>
-                        <label for="show-entries" class="text-sm text-gray-600">Tampil</label>
-                        <select id="show-entries" class="border border-gray-300 rounded-md p-1.5 text-sm">
+                        <label for="show-entries" class="text-sm text-gray-600 dark:text-gray-300">Tampil</label>
+                        <select id="show-entries" class="border border-gray-300 dark:border-gray-600 rounded-md p-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                             <option value="10">10</option><option value="25">25</option><option value="50">50</option>
                         </select>
-                        <span class="text-sm text-gray-600 ml-1">Data</span>
+                        <span class="text-sm text-gray-600 dark:text-gray-300 ml-1">Data</span>
                      </div>
                      <div>
-                        <label for="search-box" class="text-sm text-gray-600 mr-2">Pencarian:</label>
-                        <input type="text" id="search-box" class="border border-gray-300 rounded-md p-1.5 text-sm">
+                        <label for="search-box" class="text-sm text-gray-600 dark:text-gray-300 mr-2">Pencarian:</label>
+                        <input type="text" id="search-box" class="border border-gray-300 dark:border-gray-600 rounded-md p-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                      </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full">
-                        <thead class="bg-gray-50">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama File</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Opsi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama File</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tanggal</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Waktu</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Opsi</th>
                             </tr>
                         </thead>
-                        <tbody id="backup-table-body" class="bg-white divide-y divide-gray-200">
-                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Memuat data backup...</td></tr>
+                        <tbody id="backup-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Memuat data backup...</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <div class="p-4 flex justify-between items-center text-sm text-gray-600">
+                <div class="p-4 flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
                     <div id="table-info">Menampilkan 0 sampai 0 dari 0 data</div>
                     <div>
-                        <button class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100">Sebelumnya</button>
+                        <button class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">Sebelumnya</button>
                         <span id="page-numbers" class="px-3 py-1 text-blue-600 font-bold">1</span>
-                        <button class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-100">Selanjutnya</button>
+                        <button class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">Selanjutnya</button>
                     </div>
                 </div>
             </div>
@@ -920,91 +981,72 @@ window.loadContent = async (page) => {
     if (page === "manajemen-admin") {
       if (user.role !== "superadmin") {
         container.innerHTML =
-          '<p class="text-red-500">Akses ditolak. Hanya superadmin.</p>';
+          '<p class="text-red-500 p-4 bg-red-100 rounded-lg shadow-md">Akses ditolak. Hanya superadmin.</p>';
         return;
       }
-      
-      // Tampilkan HTML dasar untuk halaman
       container.innerHTML = `
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-gray-800">Manajemen Admin</h2>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Manajemen Admin</h2>
                 <button id="btnAddAdmin" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 shadow-sm font-medium">
                   <i class="bi bi-plus-lg mr-1"></i> Tambah Admin
                 </button>
             </div>
-            <div id="adminTableContainer" class="bg-white rounded-lg shadow-lg overflow-hidden"></div>
+            <div id="adminTableContainer" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden"></div>
             `;
-      
-      // Definisikan fungsi loadAdminTable (yang sudah diperbaiki)
+      await loadAdminTable();
       async function loadAdminTable() {
         const tableContainer = document.getElementById("adminTableContainer");
-        tableContainer.innerHTML = `<div class="p-4 text-center text-gray-500">Memuat data admin...</div>`;
+        tableContainer.innerHTML = `<div class="p-4 text-center text-gray-500 dark:text-gray-400">Memuat data admin...</div>`;
         try {
           const res = await fetch(`${API_BASE_URL}/admin`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const admins = await res.json();
-          if (!res.ok) throw new Error(admins.message || 'Gagal memuat admin');
+          if (!Array.isArray(admins)) throw new Error("Data admin tidak valid");
 
-          // === INI BAGIAN BARU ===
-          // 1. Ekstrak role unik dari data admin (cth: ["superadmin", "admin"])
           const uniqueRoles = [...new Set(admins.map(a => a.role))];
-          // 2. Ubah menjadi format { value, label } untuk modal
           const roleOptions = uniqueRoles.map(role => ({
-              value: role,
-              label: role.charAt(0).toUpperCase() + role.slice(1) // Membuat "admin" jadi "Admin"
+            value: role,
+            label: role.charAt(0).toUpperCase() + role.slice(1)
           }));
-          // === AKHIR BAGIAN BARU ===
-
+          
           const rows = admins
             .map(
               (a) => `
-                    <tr class="border-b hover:bg-gray-50">
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${a.username}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${a.role}</td>
+                    <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${a.username}</td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${a.role}</td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
-                        
                         <button onclick='showEditAdmin(${a.id},"${a.username}","${a.role}", ${JSON.stringify(roleOptions)})' class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors">Edit</button>
-                        
                         <button onclick="deleteAdminClient(${a.id})" class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors">Hapus</button>
                       </td>
                     </tr>`
             )
             .join("");
-
           tableContainer.innerHTML = `
                   <table class="min-w-full">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
                       <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Username</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">${rows}</tbody>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
                   </table>
                 `;
-                
-            // === PERBAIKAN: Ganti addEventListener dengan .onclick agar bisa kirim parameter ===
-            document.getElementById("btnAddAdmin").onclick = () => showAddAdminModal(roleOptions);
-                
+          document.getElementById("btnAddAdmin").onclick = () => showAddAdminModal(roleOptions);
         } catch (err) {
           showToast(`Gagal memuat data admin: ${err.message}`, 'error');
           tableContainer.innerHTML = `<p class="text-red-500 p-4">Gagal memuat data admin.</p>`;
         }
       }
-      
-      // Panggil fungsi loadAdminTable
-      await loadAdminTable(); 
-      
-      // Hapus baris addEventListener yang lama (jika ada), karena sudah diganti .onclick
-      // document.getElementById("btnAddAdmin").addEventListener("click", showAddAdminModal); // Baris ini tidak perlu lagi
-      
+      await loadAdminTable();
       return;
     }
 
     // Default
-    container.innerHTML = `<p class="text-gray-500">Halaman tidak ditemukan.</p>`;
+    container.innerHTML = `<p class="text-gray-500 dark:text-gray-400">Halaman tidak ditemukan.</p>`;
   } catch (err) {
     console.error(err);
     container.innerHTML = `<p class="text-red-500">Gagal memuat konten.</p>`;
@@ -1053,19 +1095,19 @@ function showConfirm(title, message) {
     modal.classList.remove("hidden");
     modal.classList.add("flex");
     modal.innerHTML = `
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm m-auto transform transition-all duration-300 scale-100">
-            <div class="flex items-start justify-between p-5 border-b border-gray-200">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm m-auto transform transition-all duration-300 scale-100">
+            <div class="flex items-start justify-between p-5 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-red-100 sm:h-8 sm:w-8">
                         <i class="bi bi-exclamation-triangle-fill text-red-600"></i>
                     </div>
-                    <h3 class="ml-3 text-lg font-semibold text-gray-800">${title}</h3>
+                    <h3 class="ml-3 text-lg font-semibold text-gray-800 dark:text-white">${title}</h3>
                 </div>
-                <button class="btn-cancel text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+                <button class="btn-cancel text-gray-400 hover:text-gray-600 dark:hover:text-white text-3xl leading-none">&times;</button>
             </div>
-            <div class="p-6"><p class="text-sm text-gray-600">${message}</p></div>
-            <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                <button class="btn-cancel px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">Batal</button>
+            <div class="p-6"><p class="text-sm text-gray-600 dark:text-gray-300">${message}</p></div>
+            <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                <button class="btn-cancel px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition">Batal</button>
                 <button class="btn-confirm px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition font-semibold">Ya, Hapus</button>
             </div>
         </div>
@@ -1086,21 +1128,17 @@ function showPrompt({ title, fields }) {
     const modal = document.getElementById("modal-container");
     modal.classList.remove("hidden");
     modal.classList.add("flex");
-    
-    // ▼▼▼ PERUBAHAN DIMULAI DI SINI ▼▼▼
     const fieldsHTML = fields.map(field => {
-      // Jika tipenya 'select', buat dropdown
       if (field.type === 'select') {
         const optionsHTML = (field.options || []).map(opt =>
           `<option value="${opt.value}" ${opt.value === field.value ? 'selected' : ''}>${opt.label}</option>`
         ).join('');
-        
         return `
           <div>
-              <label for="${field.id}" class="block text-sm font-medium text-gray-700">${field.label}</label>
+              <label for="${field.id}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">${field.label}</label>
               <select 
                   id="${field.id}" 
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                  class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" 
                   ${field.required ? 'required' : ''}
               >
                   ${optionsHTML}
@@ -1108,34 +1146,30 @@ function showPrompt({ title, fields }) {
           </div>
         `;
       }
-      
-      // Jika tidak, buat input biasa (default)
       return `
         <div>
-            <label for="${field.id}" class="block text-sm font-medium text-gray-700">${field.label}</label>
+            <label for="${field.id}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">${field.label}</label>
             <input 
                 type="${field.type || 'text'}" 
                 id="${field.id}" 
                 value="${field.value || ''}" 
                 placeholder="${field.placeholder || ''}"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" 
                 ${field.required ? 'required' : ''}
             >
         </div>
       `;
     }).join('');
-    // ▲▲▲ AKHIR PERUBAHAN ▲▲▲
-
     modal.innerHTML = `
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
             <form id="prompt-form">
-                <div class="flex justify-between items-center p-5 border-b border-gray-200">
-                    <h3 class="text-xl font-semibold text-gray-800">${title}</h3>
-                    <button type="button" class="btn-cancel text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+                <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white">${title}</h3>
+                    <button type="button" class="btn-cancel text-gray-400 hover:text-gray-600 dark:hover:text-white text-3xl leading-none">&times;</button>
                 </div>
                 <div class="p-6 space-y-4">${fieldsHTML}</div>
-                <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                    <button type="button" class="btn-cancel px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">Batal</button>
+                <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                    <button type="button" class="btn-cancel px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition">Batal</button>
                     <button type="submit" class="btn-confirm px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">Simpan</button>
                 </div>
             </form>
@@ -1159,30 +1193,20 @@ function showPrompt({ title, fields }) {
 // ============================
 // FUNGSI ADMIN (MENGGUNAKAN MODAL BARU)
 // ============================
-async function showAddAdminModal() {
+async function showAddAdminModal(roleOptions) {
+  const options = roleOptions || [
+      { value: "admin", label: "Admin" },
+      { value: "superadmin", label: "Super Admin" }
+  ];
   const result = await showPrompt({
     title: "Tambah Admin Baru",
     fields: [
       { id: "username", label: "Username Baru", required: true },
       { id: "password", label: "Password", type: "password", required: true },
-      // ▼▼▼ PERUBAHAN DI SINI ▼▼▼
-      { 
-        id: "role", 
-        label: "Role", 
-        type: "select", // Ganti tipe menjadi 'select'
-        value: "admin", // Nilai default
-        required: true,
-        options: [ // Tambahkan opsi dropdown
-          { value: "admin", label: "Admin" },
-          { value: "superadmin", label: "Super Admin" }
-        ]
-      }
-      // ▲▲▲ AKHIR PERUBAHAN ▲▲▲
+      { id: "role", label: "Role", type: "select", value: "admin", required: true, options: options }
     ]
   });
-
-  if (!result) return; // Dibatalkan
-
+  if (!result) return;
   try {
     const res = await fetch(`${API_BASE_URL}/admin`, {
       method: "POST",
@@ -1198,38 +1222,22 @@ async function showAddAdminModal() {
   }
 }
 
-async function showEditAdmin(id, username, role) {
+async function showEditAdmin(id, username, role, roleOptions) {
+  const options = roleOptions || [
+      { value: "admin", label: "Admin" },
+      { value: "superadmin", label: "Super Admin" }
+  ];
   const result = await showPrompt({
     title: "Edit Admin",
     fields: [
       { id: "username", label: "Username", value: username, required: true },
-      // ▼▼▼ PERUBAHAN DI SINI ▼▼▼
-      { 
-        id: "role", 
-        label: "Role", 
-        type: "select", // Ganti tipe menjadi 'select'
-        value: role, // Nilai default dari parameter
-        required: true,
-        options: [ // Tambahkan opsi dropdown
-          { value: "admin", label: "Admin" },
-          { value: "superadmin", label: "Super Admin" }
-        ]
-      },
-      // ▲▲▲ AKHIR PERUBAHAN ▲▲▲
-      { 
-        id: "password", 
-        label: "Password Baru (Opsional)", 
-        placeholder: "Kosongkan jika tidak diubah", 
-        type: "password" 
-      },
+      { id: "role", label: "Role", type: "select", value: role, required: true, options: options },
+      { id: "password", label: "Password Baru (Opsional)", placeholder: "Kosongkan jika tidak diubah", type: "password" },
     ]
   });
-
-  if (!result) return; // Dibatalkan
-
+  if (!result) return;
   const payload = { username: result.username, role: result.role };
   if (result.password) { payload.password = result.password; }
-
   try {
     const res = await fetch(`${API_BASE_URL}/admin/${id}`, {
       method: "PUT",
@@ -1269,7 +1277,7 @@ async function loadBackupTable() {
     const tableBody = document.getElementById("backup-table-body");
     const tableInfo = document.getElementById("table-info");
     if (!tableBody) return;
-    tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Memuat data backup...</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Memuat data backup...</td></tr>`;
     try {
         const res = await fetch(`${API_BASE_URL}/backup`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -1277,18 +1285,18 @@ async function loadBackupTable() {
         const data = await res.json();
         const files = data.data || [];
         if (!files.length) {
-            tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Belum ada file backup.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Belum ada file backup.</td></tr>`;
             tableInfo.innerText = "Menampilkan 0 sampai 0 dari 0 data";
             return;
         }
         const rows = files.map((file, index) => {
             const { tanggal, waktu } = formatBackupDate(file.time);
             return `
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${file.name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${tanggal}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${waktu}</td>
+                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${index + 1}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${file.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${tanggal}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${waktu}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
                         <button class="px-3 py-1 text-xs font-medium text-white bg-green-500 rounded-md hover:bg-green-600 transition-colors" onclick="downloadBackup('${file.name}')">Download</button>
                         <button class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors" onclick="deleteBackup('${file.name}')">Hapus</button>
@@ -1391,7 +1399,7 @@ function renderWeightedChart(kriteriaData, weightedData) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#4B5563' } },
         tooltip: {
           enabled: true,
           mode: 'index',
@@ -1412,5 +1420,164 @@ function renderWeightedChart(kriteriaData, weightedData) {
   });
 }
 
+// ============================
+// FUNGSI RENDER GRAFIK DASHBOARD
+// ============================
+function renderDashboardChart(rankingData) {
+    const ctx = document.getElementById('dashboard-chart');
+    if (!ctx) return;
+    const sortedData = [...rankingData].sort((a, b) => b.nilai - a.nilai);
+    const labels = sortedData.map(r => r.alternatif_nama);
+    const scores = sortedData.map(r => r.nilai);
+    
+    // Tentukan warna teks berdasarkan dark mode
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const axisColor = isDarkMode ? '#cbd5e1' : '#4B5563'; // slate-300 atau gray-600
+    const gridColor = isDarkMode ? '#374151' : '#E5E7EB'; // gray-700 atau gray-200
+
+    if (myDashboardChart) {
+        myDashboardChart.destroy();
+    }
+    myDashboardChart = new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Skor Akhir (V)',
+                data: scores,
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.7)', 'rgba(16, 185, 129, 0.7)',
+                    'rgba(245, 158, 11, 0.7)', 'rgba(239, 68, 68, 0.7)',
+                    'rgba(139, 92, 246, 0.7)', 'rgba(236, 72, 153, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(59, 130, 246, 1)', 'rgba(16, 185, 129, 1)',
+                    'rgba(245, 158, 11, 1)', 'rgba(239, 68, 68, 1)',
+                    'rgba(139, 92, 246, 1)', 'rgba(236, 72, 153, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Skor Akhir (V)', color: axisColor },
+                    ticks: { color: axisColor },
+                    grid: { color: gridColor }
+                },
+                x: {
+                    ticks: {
+                        color: axisColor,
+                        callback: function(value, index, values) {
+                            const label = this.getLabelForValue(value);
+                            return (label.length > 15) ? label.substring(0, 15) + '...' : label;
+                        }
+                    },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+}
+
+// ============================
+// FUNGSI CHATBOT (AI)
+// ============================
+async function handleChatSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message) return;
+
+    addMessageToChat(message, 'user');
+    input.value = '';
+
+    // Tampilkan 'typing'...
+    const typingIndicator = addMessageToChat('...', 'bot');
+    
+    try {
+        // Kirim pesan ke backend AI
+        const res = await fetch(`${API_BASE_URL}/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ message: message })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || "Gagal menghubungi AI.");
+        }
+
+        const data = await res.json();
+        // Hapus 'typing' dan ganti dengan jawaban AI
+        typingIndicator.remove();
+        addMessageToChat(data.reply, 'bot');
+
+    } catch (err) {
+        console.error("Error chat AI:", err);
+        // Hapus 'typing' dan ganti dengan pesan error
+        typingIndicator.remove();
+        addMessageToChat(`Maaf, terjadi kesalahan: ${err.message}`, 'bot');
+    }
+}
+
+// Fungsi untuk menambahkan pesan ke UI chat
+function addMessageToChat(message, sender) {
+    const messagesContainer = document.getElementById('chat-messages');
+    const messageDiv = document.createElement('div');
+    
+    if (sender === 'user') {
+        messageDiv.className = 'chat-message-user flex justify-end';
+        messageDiv.innerHTML = `
+            <div class="bg-blue-500 text-white p-3 rounded-lg max-w-xs">
+                <p>${message}</p>
+            </div>
+        `;
+    } else {
+        messageDiv.className = 'chat-message-bot flex';
+        messageDiv.innerHTML = `
+            <div class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg max-w-xs">
+                <p>${message}</p>
+            </div>
+        `;
+    }
+    
+    messagesContainer.appendChild(messageDiv);
+    // Scroll otomatis ke bawah
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    return messageDiv; // Kembalikan elemen untuk dihapus (jika 'typing')
+}
+
+
 // Jalankan dashboard pertama kali
-window.addEventListener("DOMContentLoaded", () => loadContent("dashboard"));
+window.addEventListener("DOMContentLoaded", () => {
+    loadContent('dashboard');
+
+    // EVENT LISTENER UNTUK CHATBOT
+    const chatForm = document.getElementById("chat-form");
+    const chatBubble = document.getElementById("chat-bubble");
+    const chatClose = document.getElementById("chat-close");
+
+    if (chatForm) {
+        chatForm.addEventListener("submit", handleChatSubmit);
+    }
+    if (chatBubble) {
+        chatBubble.addEventListener("click", () => {
+            document.getElementById("chat-window").classList.toggle("hidden");
+        });
+    }
+    if (chatClose) {
+        chatClose.addEventListener("click", () => {
+            document.getElementById("chat-window").classList.add("hidden");
+        });
+    }
+});

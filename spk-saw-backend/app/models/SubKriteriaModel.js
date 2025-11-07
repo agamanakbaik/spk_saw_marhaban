@@ -6,10 +6,11 @@ const db = require('../../config/db');
 
 class SubKriteriaModel {
 
-    // 🆕 READ: Mendapatkan SEMUA sub kriteria (untuk endpoint /api/subkriteria/all)
+    // 🆕 READ: Mendapatkan SEMUA sub kriteria
     static async findAll() {
         try {
-            const sql = "SELECT id, kriteria_id, nama, nilai FROM sub_kriterias ORDER BY kriteria_id ASC, nilai DESC";
+            // PERUBAHAN: Menambahkan 'keterangan'
+            const sql = "SELECT id, kriteria_id, nama, nilai, keterangan FROM sub_kriterias ORDER BY kriteria_id ASC, nilai DESC";
             const [rows] = await db.query(sql);
             return rows;
         } catch (error) {
@@ -18,10 +19,11 @@ class SubKriteriaModel {
         }
     }
 
-    // 🆕 READ: Mendapatkan sub kriteria berdasarkan ID Kriteria (untuk endpoint /api/subkriteria?kriteria_id=...)
+    // 🆕 READ: Mendapatkan sub kriteria berdasarkan ID Kriteria
     static async findByKriteriaId(kriteriaId) {
         try {
-            const sql = "SELECT id, kriteria_id, nama, nilai FROM sub_kriterias WHERE kriteria_id = ? ORDER BY nilai DESC";
+            // PERUBAHAN: Menambahkan 'keterangan'
+            const sql = "SELECT id, kriteria_id, nama, nilai, keterangan FROM sub_kriterias WHERE kriteria_id = ? ORDER BY nilai DESC";
             const [rows] = await db.query(sql, [kriteriaId]);
             return rows;
         } catch (error) {
@@ -31,14 +33,15 @@ class SubKriteriaModel {
     }
 
     // CREATE: Menambah sub kriteria baru
-    static async create(kriteria_id, nama, nilai) {
+    // PERUBAHAN: Menambahkan parameter 'keterangan'
+    static async create(kriteria_id, nama, nilai, keterangan) {
         try {
-            const sql = "INSERT INTO sub_kriterias (kriteria_id, nama, nilai) VALUES (?, ?, ?)";
-            const [result] = await db.query(sql, [kriteria_id, nama, nilai]);
-            return { id: result.insertId, kriteria_id, nama, nilai };
+            // PERUBAHAN: Menambahkan kolom dan value 'keterangan'
+            const sql = "INSERT INTO sub_kriterias (kriteria_id, nama, nilai, keterangan) VALUES (?, ?, ?, ?)";
+            const [result] = await db.query(sql, [kriteria_id, nama, nilai, keterangan]);
+            return { id: result.insertId, kriteria_id, nama, nilai, keterangan };
         } catch (error) {
             console.error("Error creating SubKriteria:", error);
-            // Tambahkan penanganan error duplikasi jika ada UNIQUE constraint
             if (error.code === 'ER_DUP_ENTRY') {
                 throw new Error("Sub Kriteria atau Nilai pada kriteria ini sudah ada.");
             }
@@ -46,10 +49,11 @@ class SubKriteriaModel {
         }
     }
 
-    // READ: Mendapatkan sub kriteria berdasarkan ID (untuk endpoint /api/subkriteria/:id)
+    // READ: Mendapatkan sub kriteria berdasarkan ID
     static async findById(id) {
         try {
-            const sql = "SELECT id, kriteria_id, nama, nilai FROM sub_kriterias WHERE id = ?";
+            // PERUBAHAN: Menambahkan 'keterangan'
+            const sql = "SELECT id, kriteria_id, nama, nilai, keterangan FROM sub_kriterias WHERE id = ?";
             const [rows] = await db.query(sql, [id]);
             return rows[0] || null;
         } catch (error) {
@@ -61,16 +65,17 @@ class SubKriteriaModel {
     /**
      * UPDATE: Mengubah data sub kriteria berdasarkan ID
      */
-    static async update(id, nama, nilai) {
+    // PERUBAHAN: Menambahkan parameter 'keterangan'
+    static async update(id, nama, nilai, keterangan) {
         try {
-            // Kita tidak mengizinkan kriteria_id diubah, hanya nama dan nilai
-            const sql = "UPDATE sub_kriterias SET nama = ?, nilai = ? WHERE id = ?";
-            const [result] = await db.query(sql, [nama, nilai, id]);
+            // PERUBAHAN: Menambahkan 'keterangan' ke query SET
+            const sql = "UPDATE sub_kriterias SET nama = ?, nilai = ?, keterangan = ? WHERE id = ?";
+            const [result] = await db.query(sql, [nama, nilai, keterangan, id]);
 
             if (result.affectedRows === 0) {
                 return null; // Sub Kriteria tidak ditemukan
             }
-            return { id, nama, nilai };
+            return { id, nama, nilai, keterangan };
         } catch (error) {
             console.error("Error updating SubKriteria:", error);
             throw new Error("Gagal memperbarui sub kriteria.");

@@ -14,9 +14,9 @@ const subKriteriaRoutes = require('./app/routes/SubKriteriaRoutes');
 const penilaianRoutes = require('./app/routes/PenilaianRoutes');
 const perhitunganRoutes = require('./app/routes/PerhitunganRoutes');
 const backupRoutes = require('./app/routes/backupRoutes');
-
-// Tambahan route baru untuk manajemen admin
 const adminRoutes = require('./app/routes/adminRoutes');
+const chatRoutes = require('./app/routes/chatRoutes');
+
 
 // ============================
 // KONFIGURASI DASAR SERVER
@@ -55,6 +55,10 @@ app.use('/api/backup', backupRoutes);
 
 // 🔐 Tambahan: Manajemen Admin (khusus super admin)
 app.use('/api/admin', adminRoutes);
+
+// 🤖 Tambahan: Rute untuk Chatbot AI
+app.use('/api/chat', chatRoutes);
+
 
 // ============================
 // START SERVER

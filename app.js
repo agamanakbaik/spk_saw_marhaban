@@ -5,7 +5,7 @@ const API_BASE_URL = "http://localhost:5000/api";
 const token = localStorage.getItem("token");
 console.log("Token FE:", token);
 const user = JSON.parse(localStorage.getItem("user") || "null");
-
+const mainHeader = document.querySelector('#page-content-wrapper header');
 let myWeightedChart = null; // Variabel global untuk chart di 'Hasil Perhitungan'
 let myDashboardChart = null; // Variabel global untuk chart di 'Dashboard'
 
@@ -40,6 +40,9 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 // ============================
 window.loadContent = async (page) => {
   const container = document.getElementById("content-container");
+  if (mainHeader) {
+    mainHeader.classList.add('shadow-md');
+  }
   container.innerHTML = `<div class="p-8 text-gray-500 dark:text-gray-400 text-center">Memuat...</div>`;
 
   try {
@@ -686,11 +689,7 @@ window.loadContent = async (page) => {
                     <nav class="text-sm" aria-label="Breadcrumb">
                       <ol class="list-none p-0 inline-flex">
                         <li class="flex items-center">
-                          <span class="text-gray-500 dark:text-gray-400">Dashboard</span> <svg class="fill-current w-3 h-3 mx-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M285.476 272.971L91.132 467.314c-9.373 9.373-24.569 9.373-33.941 0l-22.667-22.667c-9.357-9.357-9.375-24.522-.04-33.901L188.505 256 34.484 101.255c-9.335-9.379-9.317-24.544.04-33.901l22.667-22.667c9.373-9.373 24.569-9.373 33.941 0L285.475 239.03c9.373 9.372 9.373 24.568.001 33.941z"/></svg>
-                        </li>
-                        <li class="flex items-center">
-                          <span class="text-gray-700 dark:text-gray-200 font-semibold">Nilai Alternatif</span>
-                        </li>
+                  
                       </ol>
                     </nav>
                 </div>
@@ -1045,13 +1044,153 @@ window.loadContent = async (page) => {
       return;
     }
 
-    // Default
-    container.innerHTML = `<p class="text-gray-500 dark:text-gray-400">Halaman tidak ditemukan.</p>`;
-  } catch (err) {
-    console.error(err);
-    container.innerHTML = `<p class="text-red-500">Gagal memuat konten.</p>`;
-  }
-};
+    // ======================
+    // PENJELASAN METODE  SAW
+    // ======================
+    else if (page === "penjelasan-saw") {
+        if (mainHeader) {
+            mainHeader.classList.add('shadow-md');
+        }
+
+        container.innerHTML = `
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6 text-center">
+                Penjelasan Metode SAW (Simple Additive Weighting)
+            </h2>
+
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700">
+                
+                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">Apa itu SAW?</h3>
+                <p class="text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
+                    Simple Additive Weighting (SAW) adalah salah satu metode Sistem Pendukung Keputusan (SPK)
+                    yang menghitung nilai akhir alternatif berdasarkan penjumlahan terbobot dari setiap kriteria.
+                    Metode ini banyak digunakan karena prosesnya sederhana, mudah dihitung, dan hasilnya jelas.
+                </p>
+
+                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">Tahapan Dalam Metode SAW</h3>
+
+                <ol class="list-decimal pl-6 text-gray-600 dark:text-gray-300 space-y-3 mb-6">
+                    <li>
+                        <span class="font-medium">Menentukan kriteria dan bobotnya.</span>
+                        Misalnya harga, kualitas, kecepatan, dan daya tahan, masing-masing memiliki bobot tertentu.
+                    </li>
+                    <li>
+                        <span class="font-medium">Menentukan jenis kriteria (Benefit atau Cost).</span>
+                        - Benefit: semakin besar nilai semakin baik  
+                        - Cost: semakin kecil nilai semakin baik
+                    </li>
+                    <li>
+                        <span class="font-medium">Membuat matriks keputusan.</span>
+                        Berisi nilai setiap alternatif pada tiap kriteria.
+                    </li>
+                    <li>
+                        <span class="font-medium">Normalisasi matriks keputusan.</span><br>
+                        Rumus:
+                        <div class="bg-gray-100 dark:bg-gray-700 text-center p-3 rounded-lg my-3 text-sm">
+                            Benefit: Rij = Xij / Max(Xij) <br>
+                            Cost: Rij = Min(Xij) / Xij
+                        </div>
+                    </li>
+                    <li>
+                        <span class="font-medium">Menghitung nilai akhir.</span><br>
+                        Rumus:
+                        <div class="bg-gray-100 dark:bg-gray-700 text-center p-3 rounded-lg my-3 text-sm">
+                            Vi = Σ (Wi × Rij)
+                        </div>
+                        Dimana Wi adalah bobot kriteria.
+                    </li>
+                    <li>
+                        <span class="font-medium">Menentukan peringkat alternatif.</span>
+                        Alternatif dengan nilai terbesar adalah yang paling direkomendasikan.
+                    </li>
+                </ol>
+
+                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">Contoh Singkat</h3>
+                <p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+                    Misalkan sebuah perusahaan ingin memilih supplier terbaik berdasarkan 3 kriteria:
+                    Harga (Cost), Kualitas (Benefit), dan Kecepatan (Benefit).
+                </p>
+
+                <p class="text-gray-600 dark:text-gray-300 mt-4">
+                    Setelah dinormalisasi dan dikalikan bobot, nilai supplier dihitung.
+                    Supplier dengan nilai total tertinggi akan dipilih sebagai yang terbaik.
+                </p>
+
+                <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-600 dark:border-blue-400 rounded-lg">
+                    <p class="text-gray-800 dark:text-gray-200">
+                        <strong>Kesimpulan:</strong>  
+                        Metode SAW adalah teknik paling sederhana namun efektif untuk melakukan perangkingan pada
+                        Sistem Pendukung Keputusan. Cocok untuk berbagai bidang seperti bisnis, akademik, dan industri.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+        `;
+
+        return;
+    }
+
+// ======================
+    // HALAMAN CHATBOT (Style ChatGPT)
+    // ======================
+    else if (page === "chatbot") {
+
+    if (mainHeader) mainHeader.classList.add('shadow-md');
+
+    container.innerHTML = `
+    <div class="h-[85vh] flex flex-col max-w-3xl mx-auto">
+
+        <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-4 text-center">
+            Asisten SPK
+        </h2>
+
+        <!-- AREA CHAT (scrollable) -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-slate-800 rounded-xl shadow-inner">
+
+            <!-- Pesan bot awal -->
+            <div class="chat-message-bot flex justify-start">
+                <div class="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center mr-3">
+                    <i class="bi bi-robot text-lg"></i>
+                </div>
+                <div class="bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 px-4 py-3 rounded-2xl shadow border border-gray-100 dark:border-gray-600 max-w-xl">
+                    Halo! Saya Asisten AI. Tanyakan sesuatu tentang SAW, kriteria, atau alternatif.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- INPUT BAR FIXED -->
+        <form id="chat-form" class="border-t border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-slate-900 flex items-center gap-3 sticky bottom-0">
+            <input 
+                id="chat-input"
+                type="text"
+                placeholder="Ketik pesan Anda..."
+                class="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            >
+            <button 
+                type="submit"
+                class="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
+            >
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </form>
+
+    </div>
+    `;
+
+    document.getElementById('chat-form').addEventListener('submit', handleChatSubmit);
+    return;
+    }
+
+
+      // Default
+      container.innerHTML = `<p class="text-gray-500 dark:text-gray-400">Halaman tidak ditemukan.</p>`;
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = `<p class="text-red-500">Gagal memuat konten.</p>`;
+    }
+  };
 
 // ===============================================
 // === FUNGSI MODAL & ALERT BARU (CANTIK) ===
@@ -1487,75 +1626,121 @@ function renderDashboardChart(rankingData) {
 }
 
 // ============================
-// FUNGSI CHATBOT (AI)
+// FUNGSI CHATBOT (AI) logika pengiriman pesan (submit)
 // ============================
 async function handleChatSubmit(e) {
-    e.preventDefault();
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    if (!message) return;
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message) return;
 
-    addMessageToChat(message, 'user');
-    input.value = '';
+    addMessageToChat(message, 'user');
+    input.value = '';
 
-    // Tampilkan 'typing'...
-    const typingIndicator = addMessageToChat('...', 'bot');
-    
-    try {
-        // Kirim pesan ke backend AI
-        const res = await fetch(`${API_BASE_URL}/chat`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ message: message })
-        });
+    // Tampilkan 'typing'...
+    const typingIndicator = addMessageToChat('...', 'bot');
+    
+    try {
+        // Kirim pesan ke backend AI
+        const res = await fetch(`${API_BASE_URL}/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ message: message })
+        });
 
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.message || "Gagal menghubungi AI.");
-        }
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || "Gagal menghubungi AI.");
+        }
 
-        const data = await res.json();
-        // Hapus 'typing' dan ganti dengan jawaban AI
-        typingIndicator.remove();
-        addMessageToChat(data.reply, 'bot');
+        const data = await res.json();
+        // Hapus 'typing' dan ganti dengan jawaban AI
+        if (typingIndicator) typingIndicator.remove(); // Cek null
+        addMessageToChat(data.reply, 'bot');
 
-    } catch (err) {
-        console.error("Error chat AI:", err);
-        // Hapus 'typing' dan ganti dengan pesan error
-        typingIndicator.remove();
-        addMessageToChat(`Maaf, terjadi kesalahan: ${err.message}`, 'bot');
-    }
+    } catch (err) {
+        console.error("Error chat AI:", err);
+        // Hapus 'typing' dan ganti dengan pesan error
+        if (typingIndicator) typingIndicator.remove(); // Cek null
+        addMessageToChat(`Maaf, terjadi kesalahan: ${err.message}`, 'bot');
+    }
 }
 
-// Fungsi untuk menambahkan pesan ke UI chat
+// Fungsi untuk menambahkan pesan ke UI chat (bubble cchats)
 function addMessageToChat(message, sender) {
     const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) return;
+
     const messageDiv = document.createElement('div');
-    
-    if (sender === 'user') {
-        messageDiv.className = 'chat-message-user flex justify-end';
+    messageDiv.classList.add("w-full", "flex", "mb-3");
+
+    // Parsing markdown sederhana
+    function simpleMarkdown(text) {
+        if (!text) return "";
+        let html = text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        html = html.replace(/\n/g, "<br>");
+        html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+        return html;
+    }
+
+    // USER BUBBLE
+    if (sender === "user") {
+        messageDiv.classList.add("justify-end");
         messageDiv.innerHTML = `
-            <div class="bg-blue-500 text-white p-3 rounded-lg max-w-xs">
-                <p>${message}</p>
-            </div>
-        `;
-    } else {
-        messageDiv.className = 'chat-message-bot flex';
-        messageDiv.innerHTML = `
-            <div class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg max-w-xs">
-                <p>${message}</p>
+            <div class="bg-blue-600 text-white px-4 py-3 rounded-2xl shadow-md max-w-lg">
+                <p class="leading-relaxed">${message.replace(/</g, "&lt;")}</p>
             </div>
         `;
     }
-    
+
+    // BOT BUBBLE
+    else {
+        messageDiv.classList.add("justify-start");
+
+        // Typing indicator
+        if (message === "...") {
+            messageDiv.innerHTML = `
+                <div class="flex items-start gap-3 max-w-xl">
+                    <div class="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div class="bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 px-4 py-3 rounded-2xl shadow border border-gray-200 dark:border-gray-600">
+                        <div class="animate-pulse flex space-x-1">
+                            <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Bot text bubble
+        else {
+            messageDiv.innerHTML = `
+                <div class="flex items-start gap-3 max-w-xl">
+                    <div class="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div class="bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 px-4 py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-600">
+                        ${simpleMarkdown(message)}
+                    </div>
+                </div>
+            `;
+        }
+    }
+
     messagesContainer.appendChild(messageDiv);
-    // Scroll otomatis ke bawah
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    return messageDiv; // Kembalikan elemen untuk dihapus (jika 'typing')
+    return messageDiv;
 }
+
 
 
 // Jalankan dashboard pertama kali

@@ -1,3 +1,6 @@
+require("dotenv").config();
+
+
 // ============================ file entry point (titik masuk)
 // IMPORT MODULES
 // ============================

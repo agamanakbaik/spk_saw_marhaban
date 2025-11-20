@@ -8,6 +8,7 @@ const user = JSON.parse(localStorage.getItem("user") || "null");
 const mainHeader = document.querySelector('#page-content-wrapper header');
 let myWeightedChart = null; // Variabel global untuk chart di 'Hasil Perhitungan'
 let myDashboardChart = null; // Variabel global untuk chart di 'Dashboard'
+let globalChatHistory = []; // <--- Tambahkan ini untuk menyimpan chat sementara
 
 // Jika belum login, redirect
 if (!token) {
@@ -19,13 +20,39 @@ if (!token) {
 // Tampilkan nama user
 document.getElementById("userNameDisplay").textContent = user.username;
 
-// Sembunyikan menu superadmin jika bukan superadmin
-if (user.role !== "superadmin") {
-  const adminMenu = document.getElementById("menu-manajemen-admin");
-  if (adminMenu) adminMenu.style.display = "none";
+// ============================
+// LOGIKA TAMPILAN BERDASARKAN ROLE
+// ============================
+const labelSuperAdmin = document.getElementById("label-superadmin");
+const menuManajemen = document.getElementById("menu-manajemen-admin");
+const menuBackup = document.getElementById("menu-backup-db");
+const labelMainPanel = document.getElementById("label-main-panel");
 
-  const backupMenu = document.getElementById("menu-backup-db");
-  if (backupMenu) backupMenu.style.display = "none";
+if (user.role !== "superadmin") {
+  // === JIKA LOGIN SEBAGAI ADMIN BIASA ===
+
+  // 1. Sembunyikan menu & label khusus Super Admin
+  if (labelSuperAdmin) labelSuperAdmin.style.display = "none";
+  if (menuManajemen) menuManajemen.style.display = "none";
+  if (menuBackup) menuBackup.style.display = "none";
+
+  // 2. Judul pembatas bawah tetap "Admin Panel"
+  if (labelMainPanel) labelMainPanel.textContent = "ADMIN PANEL";
+
+} else {
+  // === JIKA LOGIN SEBAGAI SUPER ADMIN ===
+
+  // 1. Tampilkan menu khusus
+  if (menuManajemen) menuManajemen.style.display = "flex";
+  if (menuBackup) menuBackup.style.display = "flex";
+  if (labelSuperAdmin) {
+    labelSuperAdmin.style.display = "block";
+    // UBAH TEKS INI AGAR TIDAK DOBEL DENGAN BAWAHNYA
+    labelSuperAdmin.textContent = "SYSTEM SETTINGS";
+  }
+
+  // 2. Ubah judul pembatas bawah sesuai request Anda
+  if (labelMainPanel) labelMainPanel.textContent = "SUPER ADMIN PANEL";
 }
 
 // Logout
@@ -41,8 +68,8 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 window.loadContent = async (page) => {
   const container = document.getElementById("content-container");
   if (mainHeader) {
-    mainHeader.classList.add('shadow-md');
-  }
+    mainHeader.classList.add('shadow-md');
+  }
   container.innerHTML = `<div class="p-8 text-gray-500 dark:text-gray-400 text-center">Memuat...</div>`;
 
   try {
@@ -69,7 +96,7 @@ window.loadContent = async (page) => {
         const altData = await altRes.json();
         const kritData = await kritRes.json();
         if (!calcRes.ok) {
-            throw new Error("Data perhitungan belum siap.");
+          throw new Error("Data perhitungan belum siap.");
         }
         const calcData = await calcRes.json();
         const totalAlternatif = (altData.data || altData || []).length;
@@ -244,7 +271,7 @@ window.loadContent = async (page) => {
         try {
           const res = await fetch(url, {
             method,
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify(payload),
           });
           const result = await res.json();
@@ -302,7 +329,7 @@ window.loadContent = async (page) => {
             headers: { Authorization: `Bearer ${token}` },
           });
           const data = await res.json();
-          const kriterias = (Array.isArray(data) ? data : data.data || []).sort((a,b) => a.id - b.id);
+          const kriterias = (Array.isArray(data) ? data : data.data || []).sort((a, b) => a.id - b.id);
           if (!kriterias.length) {
             tableContainer.innerHTML = `<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg text-gray-500 dark:text-gray-400 text-center">Belum ada data kriteria.</div>`;
             return;
@@ -360,19 +387,19 @@ window.loadContent = async (page) => {
         try {
           const res = await fetch(
             `${API_BASE_URL}/subkriteria?kriteria_id=${kriteriaId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            }
+            headers: { Authorization: `Bearer ${token}` },
+          }
           );
           if (!res.ok) {
             const errorData = await res.json();
             throw new Error(errorData.message || "Gagal memuat sub kriteria.");
           }
           const data = await res.json();
-          const subkrits = (Array.isArray(data) ? data : data.data || []).sort((a,b) => a.id - b.id);
+          const subkrits = (Array.isArray(data) ? data : data.data || []).sort((a, b) => a.id - b.id);
           const rows = subkrits.length ?
             subkrits
-            .map(
-              (s, i) => `
+              .map(
+                (s, i) => `
                 <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${i + 1}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${s.nama}</td>
@@ -386,8 +413,8 @@ window.loadContent = async (page) => {
                   </td>
                 </tr>
                 `
-            )
-            .join("") :
+              )
+              .join("") :
             `<tr><td colspan="5" class="text-center text-gray-500 dark:text-gray-400 py-4">Belum ada sub kriteria.</td></tr>`;
           tableContainer.innerHTML = `
                 <div class="mb-4 flex items-center space-x-2 cetak-sembunyi">
@@ -483,7 +510,7 @@ window.loadContent = async (page) => {
         try {
           const res = await fetch(url, {
             method,
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify(payload),
           });
           const result = await res.json();
@@ -594,7 +621,7 @@ window.loadContent = async (page) => {
         try {
           const res = await fetch(url, {
             method,
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify(payload),
           });
           const result = await res.json();
@@ -750,7 +777,7 @@ window.loadContent = async (page) => {
             }
             const res = await fetch(`${API_BASE_URL}/penilaian/save-all`, {
               method: "POST",
-              headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
               body: JSON.stringify(payload),
             });
             const result = await res.json();
@@ -1008,7 +1035,7 @@ window.loadContent = async (page) => {
             value: role,
             label: role.charAt(0).toUpperCase() + role.slice(1)
           }));
-          
+
           const rows = admins
             .map(
               (a) => `
@@ -1045,14 +1072,14 @@ window.loadContent = async (page) => {
     }
 
     // ======================
-    // PENJELASAN METODE  SAW
-    // ======================
+    // PENJELASAN METODE  SAW
+    // ======================
     else if (page === "penjelasan-saw") {
-        if (mainHeader) {
-            mainHeader.classList.add('shadow-md');
-        }
+      if (mainHeader) {
+        mainHeader.classList.add('shadow-md');
+      }
 
-        container.innerHTML = `
+      container.innerHTML = `
         <div class="max-w-4xl mx-auto">
             <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6 text-center">
                 Penjelasan Metode SAW (Simple Additive Weighting)
@@ -1128,69 +1155,166 @@ window.loadContent = async (page) => {
         </div>
         `;
 
-        return;
+      return;
     }
 
-// ======================
-    // HALAMAN CHATBOT (Style ChatGPT)
-    // ======================
-    else if (page === "chatbot") {
+    // ======================
+    // HALAMAN CHATBOT (Final: Tombol Kirim ala WhatsApp/Gemini)
+    // ======================
+    else if (page === "chatbot") {
 
-    if (mainHeader) mainHeader.classList.add('shadow-md');
+        if (mainHeader) {
+            mainHeader.classList.add('shadow-md');
+            mainHeader.classList.add('bg-white');
+            mainHeader.classList.add('dark:bg-gray-800');
+            mainHeader.style.borderBottom = ""; 
+            mainHeader.style.backgroundColor = ""; 
+        }
 
-    container.innerHTML = `
-    <div class="h-[85vh] flex flex-col max-w-3xl mx-auto">
+        container.innerHTML = `
+        <style>
+            .no-scrollbar::-webkit-scrollbar { display: none; }
+            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        </style>
 
-        <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-4 text-center">
-            Asisten SPK
-        </h2>
+        <div class="flex flex-col h-[calc(100vh-85px)] w-full relative bg-transparent">
+            
+            <div class="flex-none w-full py-2 relative flex items-center justify-center">
+                <span class="text-gray-400 text-xs font-medium uppercase tracking-widest">
+                    Asisten SPK SAW
+                </span>
 
-        <!-- AREA CHAT (scrollable) -->
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-slate-800 rounded-xl shadow-inner">
-
-            <!-- Pesan bot awal -->
-            <div class="chat-message-bot flex justify-start">
-                <div class="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center mr-3">
-                    <i class="bi bi-robot text-lg"></i>
-                </div>
-                <div class="bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 px-4 py-3 rounded-2xl shadow border border-gray-100 dark:border-gray-600 max-w-xl">
-                    Halo! Saya Asisten AI. Tanyakan sesuatu tentang SAW, kriteria, atau alternatif.
+                <div class="absolute right-4 top-0 z-20">
+                    <button id="chat-settings-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 transition focus:outline-none">
+                        <i class="bi bi-gear-fill text-lg"></i>
+                    </button>
+                    
+                    <div id="chat-settings-menu" class="hidden absolute right-0 mt-2 w-60 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden transform transition-all duration-200 origin-top-right z-50">
+                        <div class="px-4 py-2 text-xs font-semibold text-gray-400 bg-gray-50 dark:bg-gray-900 tracking-wider">TAMPILAN</div>
+                        <button onclick="document.getElementById('user-avatar-input').click()" class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">
+                            <i class="bi bi-person-circle text-indigo-500 text-lg"></i> Ganti Foto Saya
+                        </button>
+                        <button onclick="document.getElementById('bot-avatar-input').click()" class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-700">
+                            <i class="bi bi-robot text-teal-500 text-lg"></i> Ganti Ikon Bot
+                        </button>
+                        <button id="btn-reset-profile" class="w-full text-left px-4 py-3 text-sm text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30 flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-700">
+                            <i class="bi bi-arrow-counterclockwise text-lg"></i> Reset Tampilan Default
+                        </button>
+                        <div class="px-4 py-2 text-xs font-semibold text-gray-400 bg-gray-50 dark:bg-gray-900 tracking-wider">DATA</div>
+                        <button id="btn-clear-chat" class="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center gap-3 transition-colors">
+                            <i class="bi bi-trash3-fill text-lg"></i> Hapus Riwayat Chat
+                        </button>
+                    </div>
                 </div>
             </div>
 
+            <input type="file" id="user-avatar-input" accept="image/*" class="hidden">
+            <input type="file" id="bot-avatar-input" accept="image/*" class="hidden">
+
+            <div id="chat-messages" class="flex-1 overflow-y-auto w-full p-4 scroll-smooth no-scrollbar">
+                <div id="empty-state" class="flex flex-col items-center justify-center h-full text-center opacity-100 transition-opacity duration-500">
+                    <div class="p-4 mb-2 bg-white dark:bg-gray-700 rounded-full shadow-sm">
+                        <i class="bi bi-stars text-4xl text-indigo-500"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Apa yang bisa saya bantu?</h2>
+                    <p class="text-gray-500 dark:text-gray-400 max-w-md">
+                        Tanyakan tentang perhitungan SAW, data alternatif, atau analisis kriteria.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex-none w-full pt-4 pb-6 px-4 bg-gradient-to-t from-gray-100 via-gray-100/80 to-transparent dark:from-gray-900 dark:to-transparent">
+                <div class="max-w-4xl mx-auto w-full relative">
+                    <form id="chat-form" class="relative shadow-lg rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/50 transition-all">
+                        <input 
+                            id="chat-input" 
+                            type="text" 
+                            autocomplete="off" 
+                            placeholder="Kirim pesan ke Asisten SPK..." 
+                            class="w-full py-4 pl-5 pr-14 bg-transparent text-gray-800 dark:text-white placeholder-gray-400 outline-none border-none"
+                        >
+                        <button 
+                            type="submit" 
+                            class="absolute right-2 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all flex items-center justify-center disabled:opacity-50 shadow-md"
+                            id="send-btn"
+                        >
+                            <i class="bi bi-send-fill text-lg ml-0.5"></i>
+                        </button>
+                    </form>
+                    <div class="text-center mt-2">
+                        <p class="text-[10px] text-gray-400 dark:text-gray-500">
+                            AI dapat membuat kesalahan. Periksa hasil penting.
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
+        `;
 
-        <!-- INPUT BAR FIXED -->
-        <form id="chat-form" class="border-t border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-slate-900 flex items-center gap-3 sticky bottom-0">
-            <input 
-                id="chat-input"
-                type="text"
-                placeholder="Ketik pesan Anda..."
-                class="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-            >
-            <button 
-                type="submit"
-                class="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
-            >
-                <i class="bi bi-send-fill"></i>
-            </button>
-        </form>
+        // === LOGIC (History, Settings, Upload, Reset, Clear) ===
+        const savedHistory = getChatHistory();
+        if (savedHistory.length > 0) {
+            const emptyState = document.getElementById('empty-state');
+            if(emptyState) emptyState.style.display = 'none';
+            savedHistory.forEach(item => { addMessageToChat(item.text, item.sender); });
+            setTimeout(() => {
+                const msgContainer = document.getElementById('chat-messages');
+                if(msgContainer) msgContainer.scrollTop = msgContainer.scrollHeight;
+            }, 50);
+        }
 
-    </div>
-    `;
+        const settingsBtn = document.getElementById('chat-settings-btn');
+        const settingsMenu = document.getElementById('chat-settings-menu');
+        settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); settingsMenu.classList.toggle('hidden'); });
+        document.addEventListener('click', (e) => { if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) { settingsMenu.classList.add('hidden'); }});
 
-    document.getElementById('chat-form').addEventListener('submit', handleChatSubmit);
-    return;
+        const handleImageUpload = (inputId, configKey) => {
+            const fileInput = document.getElementById(inputId);
+            fileInput.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        saveChatConfig({ [configKey]: e.target.result });
+                        settingsMenu.classList.add('hidden');
+                        showToast("Foto profil diperbarui!", "success");
+                        loadContent('chatbot');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        };
+        handleImageUpload('user-avatar-input', 'userAvatar');
+        handleImageUpload('bot-avatar-input', 'botAvatar');
+
+        document.getElementById('btn-reset-profile').addEventListener('click', async () => {
+            if (await showConfirm("Reset Tampilan", "Kembalikan ke bawaan?")) {
+                localStorage.removeItem(`chat_config_${user.username}`);
+                loadContent('chatbot');
+                showToast("Tampilan default dipulihkan.", "success");
+            }
+        });
+
+        document.getElementById('btn-clear-chat').addEventListener('click', async () => {
+            if (await showConfirm("Hapus Riwayat", "Hapus semua chat?")) {
+                localStorage.removeItem(`chat_history_${user.username}`);
+                loadContent('chatbot');
+                showToast("Riwayat dihapus.", "success");
+            }
+        });
+
+        document.getElementById('chat-form').addEventListener('submit', handleChatSubmit);
+        setTimeout(() => document.getElementById('chat-input').focus(), 100);
+        return;
     }
 
-
-      // Default
-      container.innerHTML = `<p class="text-gray-500 dark:text-gray-400">Halaman tidak ditemukan.</p>`;
-    } catch (err) {
-      console.error(err);
-      container.innerHTML = `<p class="text-red-500">Gagal memuat konten.</p>`;
-    }
-  };
+    // Default
+    container.innerHTML = `<p class="text-gray-500 dark:text-gray-400">Halaman tidak ditemukan.</p>`;
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = `<p class="text-red-500">Gagal memuat konten.</p>`;
+  }
+};
 
 // ===============================================
 // === FUNGSI MODAL & ALERT BARU (CANTIK) ===
@@ -1334,8 +1458,8 @@ function showPrompt({ title, fields }) {
 // ============================
 async function showAddAdminModal(roleOptions) {
   const options = roleOptions || [
-      { value: "admin", label: "Admin" },
-      { value: "superadmin", label: "Super Admin" }
+    { value: "admin", label: "Admin" },
+    { value: "superadmin", label: "Super Admin" }
   ];
   const result = await showPrompt({
     title: "Tambah Admin Baru",
@@ -1349,7 +1473,7 @@ async function showAddAdminModal(roleOptions) {
   try {
     const res = await fetch(`${API_BASE_URL}/admin`, {
       method: "POST",
-      headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(result),
     });
     const j = await res.json();
@@ -1363,8 +1487,8 @@ async function showAddAdminModal(roleOptions) {
 
 async function showEditAdmin(id, username, role, roleOptions) {
   const options = roleOptions || [
-      { value: "admin", label: "Admin" },
-      { value: "superadmin", label: "Super Admin" }
+    { value: "admin", label: "Admin" },
+    { value: "superadmin", label: "Super Admin" }
   ];
   const result = await showPrompt({
     title: "Edit Admin",
@@ -1380,7 +1504,7 @@ async function showEditAdmin(id, username, role, roleOptions) {
   try {
     const res = await fetch(`${API_BASE_URL}/admin/${id}`, {
       method: "PUT",
-      headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`},
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     });
     const j = await res.json();
@@ -1413,24 +1537,24 @@ async function deleteAdminClient(id) {
 // FUNGSI KHUSUS BACKUP
 // ============================
 async function loadBackupTable() {
-    const tableBody = document.getElementById("backup-table-body");
-    const tableInfo = document.getElementById("table-info");
-    if (!tableBody) return;
-    tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Memuat data backup...</td></tr>`;
-    try {
-        const res = await fetch(`${API_BASE_URL}/backup`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        const files = data.data || [];
-        if (!files.length) {
-            tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Belum ada file backup.</td></tr>`;
-            tableInfo.innerText = "Menampilkan 0 sampai 0 dari 0 data";
-            return;
-        }
-        const rows = files.map((file, index) => {
-            const { tanggal, waktu } = formatBackupDate(file.time);
-            return `
+  const tableBody = document.getElementById("backup-table-body");
+  const tableInfo = document.getElementById("table-info");
+  if (!tableBody) return;
+  tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Memuat data backup...</td></tr>`;
+  try {
+    const res = await fetch(`${API_BASE_URL}/backup`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    const files = data.data || [];
+    if (!files.length) {
+      tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Belum ada file backup.</td></tr>`;
+      tableInfo.innerText = "Menampilkan 0 sampai 0 dari 0 data";
+      return;
+    }
+    const rows = files.map((file, index) => {
+      const { tanggal, waktu } = formatBackupDate(file.time);
+      return `
                 <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${index + 1}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${file.name}</td>
@@ -1442,66 +1566,66 @@ async function loadBackupTable() {
                     </td>
                 </tr>
             `;
-        }).join('');
-        tableBody.innerHTML = rows;
-        tableInfo.innerText = `Menampilkan 1 sampai ${files.length} dari ${files.length} data`;
-    } catch (err) {
-        showToast(`Gagal memuat daftar backup: ${err.message}`, 'error');
-        tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Gagal memuat data.</td></tr>`;
-    }
+    }).join('');
+    tableBody.innerHTML = rows;
+    tableInfo.innerText = `Menampilkan 1 sampai ${files.length} dari ${files.length} data`;
+  } catch (err) {
+    showToast(`Gagal memuat daftar backup: ${err.message}`, 'error');
+    tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Gagal memuat data.</td></tr>`;
+  }
 }
 
 function formatBackupDate(dateString) {
-    const date = new Date(dateString);
-    const optionsTanggal = { year: 'numeric', month: 'long', day: 'numeric' };
-    const optionsWaktu = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-    return {
-        tanggal: date.toLocaleDateString('id-ID', optionsTanggal),
-        waktu: date.toLocaleTimeString('id-ID', optionsWaktu).replace(/\./g, ':')
-    };
+  const date = new Date(dateString);
+  const optionsTanggal = { year: 'numeric', month: 'long', day: 'numeric' };
+  const optionsWaktu = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+  return {
+    tanggal: date.toLocaleDateString('id-ID', optionsTanggal),
+    waktu: date.toLocaleTimeString('id-ID', optionsWaktu).replace(/\./g, ':')
+  };
 }
 
 async function downloadBackup(filename) {
-    showToast(`Mempersiapkan download: ${filename}`, 'success');
-    try {
-        const res = await fetch(`${API_BASE_URL}/backup/${filename}`, {
-            method: 'GET',
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({ message: 'File tidak ditemukan atau rusak.' }));
-            throw new Error(errData.message);
-        }
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
-    } catch (err) {
-        showToast(`Gagal mengunduh file: ${err.message}`, 'error');
+  showToast(`Mempersiapkan download: ${filename}`, 'success');
+  try {
+    const res = await fetch(`${API_BASE_URL}/backup/${filename}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ message: 'File tidak ditemukan atau rusak.' }));
+      throw new Error(errData.message);
     }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+  } catch (err) {
+    showToast(`Gagal mengunduh file: ${err.message}`, 'error');
+  }
 }
 
 async function deleteBackup(filename) {
-    const confirmed = await showConfirm("Hapus Backup", `Yakin ingin menghapus file backup: ${filename}?`);
-    if (!confirmed) return;
-    try {
-        const res = await fetch(`${API_BASE_URL}/backup/${filename}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.message);
-        showToast(result.message || 'File backup berhasil dihapus.');
-        await loadBackupTable();
-    } catch (err) {
-        showToast(`Gagal menghapus file: ${err.message}`, 'error');
-    }
+  const confirmed = await showConfirm("Hapus Backup", `Yakin ingin menghapus file backup: ${filename}?`);
+  if (!confirmed) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/backup/${filename}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message);
+    showToast(result.message || 'File backup berhasil dihapus.');
+    await loadBackupTable();
+  } catch (err) {
+    showToast(`Gagal menghapus file: ${err.message}`, 'error');
+  }
 }
 
 // ============================
@@ -1563,206 +1687,291 @@ function renderWeightedChart(kriteriaData, weightedData) {
 // FUNGSI RENDER GRAFIK DASHBOARD
 // ============================
 function renderDashboardChart(rankingData) {
-    const ctx = document.getElementById('dashboard-chart');
-    if (!ctx) return;
-    const sortedData = [...rankingData].sort((a, b) => b.nilai - a.nilai);
-    const labels = sortedData.map(r => r.alternatif_nama);
-    const scores = sortedData.map(r => r.nilai);
-    
-    // Tentukan warna teks berdasarkan dark mode
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    const axisColor = isDarkMode ? '#cbd5e1' : '#4B5563'; // slate-300 atau gray-600
-    const gridColor = isDarkMode ? '#374151' : '#E5E7EB'; // gray-700 atau gray-200
+  const ctx = document.getElementById('dashboard-chart');
+  if (!ctx) return;
+  const sortedData = [...rankingData].sort((a, b) => b.nilai - a.nilai);
+  const labels = sortedData.map(r => r.alternatif_nama);
+  const scores = sortedData.map(r => r.nilai);
 
-    if (myDashboardChart) {
-        myDashboardChart.destroy();
-    }
-    myDashboardChart = new Chart(ctx.getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Skor Akhir (V)',
-                data: scores,
-                backgroundColor: [
-                    'rgba(59, 130, 246, 0.7)', 'rgba(16, 185, 129, 0.7)',
-                    'rgba(245, 158, 11, 0.7)', 'rgba(239, 68, 68, 0.7)',
-                    'rgba(139, 92, 246, 0.7)', 'rgba(236, 72, 153, 0.7)'
-                ],
-                borderColor: [
-                    'rgba(59, 130, 246, 1)', 'rgba(16, 185, 129, 1)',
-                    'rgba(245, 158, 11, 1)', 'rgba(239, 68, 68, 1)',
-                    'rgba(139, 92, 246, 1)', 'rgba(236, 72, 153, 1)'
-                ],
-                borderWidth: 1
-            }]
+  // Tentukan warna teks berdasarkan dark mode
+  const isDarkMode = document.documentElement.classList.contains('dark');
+  const axisColor = isDarkMode ? '#cbd5e1' : '#4B5563'; // slate-300 atau gray-600
+  const gridColor = isDarkMode ? '#374151' : '#E5E7EB'; // gray-700 atau gray-200
+
+  if (myDashboardChart) {
+    myDashboardChart.destroy();
+  }
+  myDashboardChart = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Skor Akhir (V)',
+        data: scores,
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.7)', 'rgba(16, 185, 129, 0.7)',
+          'rgba(245, 158, 11, 0.7)', 'rgba(239, 68, 68, 0.7)',
+          'rgba(139, 92, 246, 0.7)', 'rgba(236, 72, 153, 0.7)'
+        ],
+        borderColor: [
+          'rgba(59, 130, 246, 1)', 'rgba(16, 185, 129, 1)',
+          'rgba(245, 158, 11, 1)', 'rgba(239, 68, 68, 1)',
+          'rgba(139, 92, 246, 1)', 'rgba(236, 72, 153, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Skor Akhir (V)', color: axisColor },
+          ticks: { color: axisColor },
+          grid: { color: gridColor }
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: 'Skor Akhir (V)', color: axisColor },
-                    ticks: { color: axisColor },
-                    grid: { color: gridColor }
-                },
-                x: {
-                    ticks: {
-                        color: axisColor,
-                        callback: function(value, index, values) {
-                            const label = this.getLabelForValue(value);
-                            return (label.length > 15) ? label.substring(0, 15) + '...' : label;
-                        }
-                    },
-                    grid: { display: false }
-                }
+        x: {
+          ticks: {
+            color: axisColor,
+            callback: function (value, index, values) {
+              const label = this.getLabelForValue(value);
+              return (label.length > 15) ? label.substring(0, 15) + '...' : label;
             }
+          },
+          grid: { display: false }
         }
-    });
+      }
+    }
+  });
 }
 
 // ============================
-// FUNGSI CHATBOT (AI) logika pengiriman pesan (submit)
+// LOGIKA CHATBOT (STYLE BARU)
 // ============================
+
 async function handleChatSubmit(e) {
-    e.preventDefault();
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    if (!message) return;
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    const emptyState = document.getElementById('empty-state');
+    const message = input.value.trim();
 
-    addMessageToChat(message, 'user');
-    input.value = '';
+    if (!message) return;
 
-    // Tampilkan 'typing'...
-    const typingIndicator = addMessageToChat('...', 'bot');
-    
-    try {
-        // Kirim pesan ke backend AI
-        const res = await fetch(`${API_BASE_URL}/chat`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ message: message })
-        });
+    // Hilangkan welcome screen
+    if (emptyState) emptyState.style.display = 'none';
 
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.message || "Gagal menghubungi AI.");
-        }
+    input.disabled = true;
+    sendBtn.disabled = true;
 
-        const data = await res.json();
-        // Hapus 'typing' dan ganti dengan jawaban AI
-        if (typingIndicator) typingIndicator.remove(); // Cek null
-        addMessageToChat(data.reply, 'bot');
+    // 1. TAMPILKAN & SIMPAN Pesan User
+    addMessageToChat(message, 'user');
+    saveChatHistory({ sender: 'user', text: message }); // <--- SIMPAN KE STORAGE
 
-    } catch (err) {
-        console.error("Error chat AI:", err);
-        // Hapus 'typing' dan ganti dengan pesan error
-        if (typingIndicator) typingIndicator.remove(); // Cek null
-        addMessageToChat(`Maaf, terjadi kesalahan: ${err.message}`, 'bot');
-    }
+    input.value = '';
+
+    const typingId = 'typing-' + Date.now();
+    addMessageToChat('...', 'bot', typingId);
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ message: message })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || "Gagal menghubungi AI.");
+        }
+
+        const data = await res.json();
+
+        // Hapus bubble typing
+        const typingBubble = document.getElementById(typingId);
+        if (typingBubble) typingBubble.remove();
+
+        // 2. TAMPILKAN & SIMPAN Balasan Bot
+        addMessageToChat(data.reply, 'bot');
+        saveChatHistory({ sender: 'bot', text: data.reply }); // <--- SIMPAN KE STORAGE
+
+    } catch (err) {
+        console.error("Error chat AI:", err);
+        const typingBubble = document.getElementById(typingId);
+        if (typingBubble) typingBubble.remove();
+        
+        const errorMsg = `⚠️ Maaf, terjadi kesalahan: ${err.message}`;
+        addMessageToChat(errorMsg, 'bot');
+        
+        // Opsional: Simpan error juga
+        // saveChatHistory({ sender: 'bot', text: errorMsg });
+        
+    } finally {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+    }
 }
 
-// Fungsi untuk menambahkan pesan ke UI chat (bubble cchats)
-function addMessageToChat(message, sender) {
+function addMessageToChat(message, sender, elementId = null) {
     const messagesContainer = document.getElementById('chat-messages');
     if (!messagesContainer) return;
 
-    const messageDiv = document.createElement('div');
-    messageDiv.classList.add("w-full", "flex", "mb-3");
+    // AMBIL CONFIG AVATAR SAAT INI
+    const config = getChatConfig();
 
-    // Parsing markdown sederhana
+    const wrapper = document.createElement('div');
+    wrapper.className = "w-full max-w-3xl mx-auto flex gap-4 mb-6 animate-fade-in"; 
+    if (elementId) wrapper.id = elementId;
+
     function simpleMarkdown(text) {
         if (!text) return "";
         let html = text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-        html = html.replace(/\n/g, "<br>");
-        html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/\n/g, "<br>")
+            .replace(/\*\*(.*?)\*\*/g, "<strong class='font-bold text-indigo-600 dark:text-indigo-400'>$1</strong>") 
+            .replace(/`([^`]+)`/g, "<code class='bg-gray-100 dark:bg-gray-800 px-1 rounded text-sm font-mono text-red-500'>$1</code>");
         return html;
     }
 
-    // USER BUBBLE
-    if (sender === "user") {
-        messageDiv.classList.add("justify-end");
-        messageDiv.innerHTML = `
-            <div class="bg-blue-600 text-white px-4 py-3 rounded-2xl shadow-md max-w-lg">
-                <p class="leading-relaxed">${message.replace(/</g, "&lt;")}</p>
+    if (sender === 'user') {
+        // === TAMPILAN USER (KANAN) ===
+        wrapper.classList.add('justify-end');
+
+        // Cek Avatar User Custom
+        let userAvatarHtml;
+        if (config.userAvatar) {
+            userAvatarHtml = `<img src="${config.userAvatar}" class="w-8 h-8 rounded-full object-cover shadow border border-white/20">`;
+        } else {
+            // Default Initials (U)
+            userAvatarHtml = `
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow">
+                    ${user.username.charAt(0).toUpperCase()}
+                </div>`;
+        }
+
+        wrapper.innerHTML = `
+            <div class="flex flex-col items-end max-w-[80%]">
+                <div class="bg-indigo-600 text-white px-5 py-3 rounded-[20px] rounded-tr-sm shadow-md">
+                    <p class="leading-relaxed whitespace-pre-wrap text-sm">${message}</p>
+                </div>
+            </div>
+            ${userAvatarHtml} `;
+    } else {
+        // === TAMPILAN BOT (KIRI) ===
+        wrapper.classList.add('justify-start');
+        
+        // Cek Avatar Bot Custom
+        let botAvatarHtml;
+        if (config.botAvatar) {
+            botAvatarHtml = `<img src="${config.botAvatar}" class="w-8 h-8 rounded-full object-cover shadow border border-gray-200">`;
+        } else {
+            // Default Icon Robot
+            botAvatarHtml = `
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center text-white shadow-sm border border-white/10">
+                    <i class="bi bi-robot"></i>
+                </div>`;
+        }
+
+        let contentHtml = '';
+        if (message === '...') {
+            contentHtml = `
+                <div class="flex space-x-1 h-6 items-center">
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                </div>`;
+        } else {
+            contentHtml = `<p class="leading-relaxed text-gray-800 dark:text-gray-100 text-sm">${simpleMarkdown(message)}</p>`;
+        }
+
+        wrapper.innerHTML = `
+            ${botAvatarHtml} <div class="flex flex-col max-w-[85%]">
+                <div class="text-[10px] font-bold text-gray-500 mb-1 ml-1 uppercase">Asisten</div>
+                <div class="px-1 py-1">
+                    ${contentHtml}
+                </div>
             </div>
         `;
     }
 
-    // BOT BUBBLE
-    else {
-        messageDiv.classList.add("justify-start");
-
-        // Typing indicator
-        if (message === "...") {
-            messageDiv.innerHTML = `
-                <div class="flex items-start gap-3 max-w-xl">
-                    <div class="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white">
-                        <i class="bi bi-robot"></i>
-                    </div>
-                    <div class="bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 px-4 py-3 rounded-2xl shadow border border-gray-200 dark:border-gray-600">
-                        <div class="animate-pulse flex space-x-1">
-                            <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
-                            <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
-                            <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Bot text bubble
-        else {
-            messageDiv.innerHTML = `
-                <div class="flex items-start gap-3 max-w-xl">
-                    <div class="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white">
-                        <i class="bi bi-robot"></i>
-                    </div>
-                    <div class="bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 px-4 py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-600">
-                        ${simpleMarkdown(message)}
-                    </div>
-                </div>
-            `;
-        }
-    }
-
-    messagesContainer.appendChild(messageDiv);
+    messagesContainer.appendChild(wrapper);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    return messageDiv;
+    return wrapper;
 }
 
+// ============================
+// MANAJEMEN RIWAYAT CHAT (LOCAL STORAGE)
+// ============================
+function getChatHistory() {
+    // Gunakan username sebagai kunci agar chat user A tidak muncul di user B
+    const key = `chat_history_${user.username}`; 
+    const history = localStorage.getItem(key);
+    return history ? JSON.parse(history) : [];
+}
+
+function saveChatHistory(entry) {
+    const key = `chat_history_${user.username}`;
+    const history = getChatHistory();
+    history.push(entry);
+    localStorage.setItem(key, JSON.stringify(history));
+}
+
+// Opsional: Fungsi ini bisa dipanggil jika Admin ingin menghapus chat user tertentu
+function clearChatHistory() {
+    const key = `chat_history_${user.username}`;
+    localStorage.removeItem(key);
+    // Refresh tampilan jika sedang di halaman chat
+    const chatContainer = document.getElementById('chat-messages');
+    if(chatContainer) chatContainer.innerHTML = ''; 
+}
+
+// ============================
+// MANAJEMEN CONFIG (AVATAR) PER USER
+// ============================
+function getChatConfig() {
+    const key = `chat_config_${user.username}`;
+    const config = localStorage.getItem(key);
+    // Default: userAvatar null, botAvatar null
+    return config ? JSON.parse(config) : { userAvatar: null, botAvatar: null };
+}
+
+function saveChatConfig(newConfig) {
+    const key = `chat_config_${user.username}`;
+    const currentConfig = getChatConfig();
+    // Gabungkan config lama dengan yang baru
+    const finalConfig = { ...currentConfig, ...newConfig };
+    localStorage.setItem(key, JSON.stringify(finalConfig));
+}
 
 
 // Jalankan dashboard pertama kali
 window.addEventListener("DOMContentLoaded", () => {
-    loadContent('dashboard');
+  loadContent('dashboard');
 
-    // EVENT LISTENER UNTUK CHATBOT
-    const chatForm = document.getElementById("chat-form");
-    const chatBubble = document.getElementById("chat-bubble");
-    const chatClose = document.getElementById("chat-close");
+  // EVENT LISTENER UNTUK CHATBOT
+  const chatForm = document.getElementById("chat-form");
+  const chatBubble = document.getElementById("chat-bubble");
+  const chatClose = document.getElementById("chat-close");
 
-    if (chatForm) {
-        chatForm.addEventListener("submit", handleChatSubmit);
-    }
-    if (chatBubble) {
-        chatBubble.addEventListener("click", () => {
-            document.getElementById("chat-window").classList.toggle("hidden");
-        });
-    }
-    if (chatClose) {
-        chatClose.addEventListener("click", () => {
-            document.getElementById("chat-window").classList.add("hidden");
-        });
-    }
+  if (chatForm) {
+    chatForm.addEventListener("submit", handleChatSubmit);
+  }
+  if (chatBubble) {
+    chatBubble.addEventListener("click", () => {
+      document.getElementById("chat-window").classList.toggle("hidden");
+    });
+  }
+  if (chatClose) {
+    chatClose.addEventListener("click", () => {
+      document.getElementById("chat-window").classList.add("hidden");
+    });
+  }
 });

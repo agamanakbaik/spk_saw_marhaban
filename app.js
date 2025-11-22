@@ -27,31 +27,38 @@ const labelSuperAdmin = document.getElementById("label-superadmin");
 const menuManajemen = document.getElementById("menu-manajemen-admin");
 const menuBackup = document.getElementById("menu-backup-db");
 const labelMainPanel = document.getElementById("label-main-panel");
+const menuSettingsNavbar = document.getElementById("menu-settings-web"); // ID dari index.html
 
 if (user.role !== "superadmin") {
   // === JIKA LOGIN SEBAGAI ADMIN BIASA ===
 
-  // 1. Sembunyikan menu & label khusus Super Admin
+  // 1. Sembunyikan menu Sidebar khusus Super Admin
   if (labelSuperAdmin) labelSuperAdmin.style.display = "none";
   if (menuManajemen) menuManajemen.style.display = "none";
   if (menuBackup) menuBackup.style.display = "none";
 
-  // 2. Judul pembatas bawah tetap "Admin Panel"
+  // 2. Sembunyikan menu "Tampilan Toko" di Navbar (Panah Bawah)
+  if (menuSettingsNavbar) menuSettingsNavbar.classList.add("hidden");
+
+  // 3. Judul pembatas bawah tetap "Admin Panel"
   if (labelMainPanel) labelMainPanel.textContent = "ADMIN PANEL";
 
 } else {
   // === JIKA LOGIN SEBAGAI SUPER ADMIN ===
 
-  // 1. Tampilkan menu khusus
+  // 1. Tampilkan menu Sidebar khusus
   if (menuManajemen) menuManajemen.style.display = "flex";
   if (menuBackup) menuBackup.style.display = "flex";
+  
   if (labelSuperAdmin) {
     labelSuperAdmin.style.display = "block";
-    // UBAH TEKS INI AGAR TIDAK DOBEL DENGAN BAWAHNYA
     labelSuperAdmin.textContent = "SYSTEM SETTINGS";
   }
 
-  // 2. Ubah judul pembatas bawah sesuai request Anda
+  // 2. Tampilkan menu "Tampilan Toko" di Navbar
+  if (menuSettingsNavbar) menuSettingsNavbar.classList.remove("hidden");
+
+  // 3. Ubah judul pembatas bawah
   if (labelMainPanel) labelMainPanel.textContent = "SUPER ADMIN PANEL";
 }
 
@@ -2088,6 +2095,236 @@ function saveChatConfig(newConfig) {
     const finalConfig = { ...currentConfig, ...newConfig };
     localStorage.setItem(key, JSON.stringify(finalConfig));
 }
+
+// ==========================================
+// MODAL SETTINGS (TAMPILAN TOKO)
+// ==========================================
+window.openSettingsModal = async () => {
+    const modal = document.getElementById("modal-container");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    modal.innerHTML = `<div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl flex items-center gap-3"><span class="spinner-border text-indigo-600"></span><span class="text-gray-600 dark:text-gray-300">Memuat pengaturan...</span></div>`;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/settings`);
+        const data = await res.json();
+        
+        const appName = data.app_name || "Marhaban Parfume";
+        // URL lengkap atau kosong
+        const bgUrl = data.background_url || ""; 
+        const logoUrl = data.logo_url || "";
+
+        modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl m-auto overflow-hidden flex flex-col max-h-[90vh]">
+                
+                <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/50">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="bi bi-palette text-indigo-600"></i> Pengaturan Tampilan Toko
+                    </h3>
+                    <button onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-2xl leading-none transition">&times;</button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        
+                        <form id="brandingForm" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Nama Toko</label>
+                                <input type="text" id="confAppName" value="${appName}" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Background Login</label>
+                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/30 text-center hover:bg-indigo-50 dark:hover:bg-gray-700 transition relative group">
+                                    
+                                    <div id="bgPreviewBox" class="${bgUrl ? '' : 'hidden'} w-full h-32 bg-cover bg-center rounded mb-3 shadow-sm relative" style="background-image: url('${bgUrl}');">
+                                        <button type="button" id="btnDeleteBg" class="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full hover:bg-red-700 shadow-md transition" title="Hapus Background">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+
+                                    <input type="file" id="bgInput" accept="image/*" class="hidden">
+                                    <label for="bgInput" class="cursor-pointer inline-flex items-center px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-500">
+                                        <i class="bi bi-image mr-2"></i> Ganti Background
+                                    </label>
+                                    <p class="text-xs text-gray-500 mt-2">Disarankan ukuran 1920x1080 (HD).</p>
+                                    <input type="hidden" id="isDeleteBg" value="false">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Logo Toko</label>
+                                <div class="flex items-center gap-4">
+                                    <div class="relative w-20 h-20 bg-gray-100 dark:bg-gray-600 rounded-lg border border-gray-300 flex items-center justify-center overflow-hidden">
+                                        <img id="logoPreview" src="${logoUrl}" class="${logoUrl ? '' : 'hidden'} w-full h-full object-contain p-1">
+                                        <i id="logoPlaceholder" class="bi bi-image text-2xl text-gray-400 ${logoUrl ? 'hidden' : ''}"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="file" id="logoInput" accept="image/*" class="hidden">
+                                        <label for="logoInput" class="cursor-pointer px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 transition inline-block mb-2">
+                                            <i class="bi bi-upload mr-1"></i> Pilih Logo
+                                        </label>
+                                        <br>
+                                        <button type="button" id="btnDeleteLogo" class="text-xs text-red-500 hover:text-red-700 hover:underline ${logoUrl ? '' : 'hidden'}">
+                                            <i class="bi bi-trash"></i> Hapus Logo
+                                        </button>
+                                        <input type="hidden" id="isDeleteLogo" value="false">
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="relative bg-gray-900 rounded-xl overflow-hidden aspect-video shadow-inner border-4 border-gray-800">
+                            <div id="previewBg" class="absolute inset-0 bg-cover bg-center transition-all duration-500" style="background-image: url('${bgUrl}'); background-color: #111827;">
+                                <div class="absolute inset-0 bg-black/50 backdrop-blur-[1px]"></div>
+                            </div>
+                            
+                            <div class="absolute inset-0 flex items-center justify-center p-4">
+                                <div class="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-2xl w-48 text-center transform scale-90">
+                                    <img id="previewLogoImg" src="${logoUrl}" class="${logoUrl ? '' : 'hidden'} h-8 mx-auto mb-2 object-contain">
+                                    <div id="previewLogoIcon" class="${logoUrl ? 'hidden' : ''} w-8 h-8 mx-auto mb-2 rounded-full bg-indigo-600 flex items-center justify-center text-white"><i class="bi bi-shop"></i></div>
+                                    
+                                    <h4 id="previewTitle" class="font-bold text-gray-800 text-sm">${appName}</h4>
+                                    <div class="mt-3 space-y-2 opacity-50">
+                                        <div class="h-6 bg-gray-200 rounded w-full"></div>
+                                        <div class="h-6 bg-gray-200 rounded w-full"></div>
+                                        <div class="h-8 bg-indigo-600 rounded w-full mt-2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="absolute top-2 left-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded">Live Preview</div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="p-5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-end gap-3">
+                    <button onclick="document.getElementById('modal-container').classList.add('hidden')" class="px-5 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">Batal</button>
+                    <button id="btnSaveSettings" class="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-md transition flex items-center gap-2">
+                        <i class="bi bi-check-lg"></i> Simpan Perubahan
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // === LOGIKA INTERAKTIF ===
+        const inpName = document.getElementById('confAppName');
+        
+        // Variabel Background
+        const bgInput = document.getElementById('bgInput');
+        const bgPreviewBox = document.getElementById('bgPreviewBox');
+        const btnDeleteBg = document.getElementById('btnDeleteBg');
+        const isDeleteBg = document.getElementById('isDeleteBg');
+        const previewBg = document.getElementById('previewBg');
+
+        // Variabel Logo
+        const logoInput = document.getElementById('logoInput');
+        const isDeleteLogo = document.getElementById('isDeleteLogo');
+        const btnDeleteLogo = document.getElementById('btnDeleteLogo');
+        const saveBtn = document.getElementById('btnSaveSettings');
+
+        // 1. LOGIKA PREVIEW BACKGROUND
+        bgInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Update Box di Form
+                    bgPreviewBox.style.backgroundImage = `url('${e.target.result}')`;
+                    bgPreviewBox.classList.remove('hidden');
+                    // Update Live Preview Kanan
+                    previewBg.style.backgroundImage = `url('${e.target.result}')`;
+                    isDeleteBg.value = "false";
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        btnDeleteBg.addEventListener('click', () => {
+            if(confirm("Hapus gambar background dan kembali ke warna hitam?")) {
+                bgPreviewBox.style.backgroundImage = '';
+                bgPreviewBox.classList.add('hidden');
+                previewBg.style.backgroundImage = ''; // Jadi hitam (default CSS)
+                bgInput.value = "";
+                isDeleteBg.value = "true";
+            }
+        });
+
+        // 2. LOGIKA PREVIEW LOGO
+        logoInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('logoPreview').src = e.target.result;
+                    document.getElementById('logoPreview').classList.remove('hidden');
+                    document.getElementById('logoPlaceholder').classList.add('hidden');
+                    document.getElementById('previewLogoImg').src = e.target.result;
+                    document.getElementById('previewLogoImg').classList.remove('hidden');
+                    document.getElementById('previewLogoIcon').classList.add('hidden');
+                    
+                    btnDeleteLogo.classList.remove('hidden');
+                    isDeleteLogo.value = "false";
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        btnDeleteLogo.addEventListener('click', () => {
+            if(confirm("Hapus logo?")) {
+                document.getElementById('logoPreview').src = "";
+                document.getElementById('logoPreview').classList.add('hidden');
+                document.getElementById('logoPlaceholder').classList.remove('hidden');
+                document.getElementById('previewLogoImg').classList.add('hidden');
+                document.getElementById('previewLogoIcon').classList.remove('hidden');
+                btnDeleteLogo.classList.add('hidden');
+                logoInput.value = "";
+                isDeleteLogo.value = "true";
+            }
+        });
+
+        // 3. LOGIKA PREVIEW NAMA
+        inpName.addEventListener('input', () => {
+            document.getElementById('previewTitle').innerText = inpName.value || "Nama Toko";
+        });
+
+        // 4. SIMPAN DATA (FORMDATA)
+        saveBtn.addEventListener('click', async () => {
+            saveBtn.innerHTML = `<span class="spinner-border spinner-border-sm mr-2"></span> Menyimpan...`;
+            saveBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('app_name', inpName.value);
+            formData.append('delete_logo', isDeleteLogo.value);
+            formData.append('delete_background', isDeleteBg.value);
+
+            if (logoInput.files[0]) formData.append('logo', logoInput.files[0]);
+            if (bgInput.files[0]) formData.append('background', bgInput.files[0]);
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/settings`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error("Gagal update");
+                
+                showToast("Tampilan berhasil diperbarui!", "success");
+                document.getElementById('modal-container').classList.add('hidden');
+            } catch (err) {
+                showToast("Error: " + err.message, "error");
+                saveBtn.innerHTML = `<i class="bi bi-check-lg"></i> Simpan Perubahan`;
+                saveBtn.disabled = false;
+            }
+        });
+
+    } catch (err) {
+        console.error(err);
+        modal.innerHTML = `<div class="bg-white p-6 rounded text-red-500">Gagal memuat pengaturan.</div>`;
+    }
+};
+
 
 
 // Jalankan dashboard pertama kali

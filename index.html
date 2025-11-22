@@ -16,13 +16,15 @@
 
     <style>
         /* Efek transisi halus */
-        #sidebar-wrapper, #page-content-wrapper {
+        #sidebar-wrapper,
+        #page-content-wrapper {
             transition: all 0.3s ease-in-out;
         }
 
         /* Sidebar Default (Desktop) */
         #sidebar-wrapper {
-            width: 16rem; /* Lebar standar */
+            width: 16rem;
+            /* Lebar standar */
             height: 100vh;
             position: fixed;
             left: 0;
@@ -31,13 +33,15 @@
         }
 
         #page-content-wrapper {
-            margin-left: 16rem; /* Sesuai lebar sidebar */
+            margin-left: 16rem;
+            /* Sesuai lebar sidebar */
             width: calc(100% - 16rem);
         }
 
         /* --- MODE COLLAPSE (Kecil) --- */
         body.collapsed #sidebar-wrapper {
-            width: 5rem; /* Lebar saat kecil (cukup untuk ikon) */
+            width: 5rem;
+            /* Lebar saat kecil (cukup untuk ikon) */
         }
 
         body.collapsed #page-content-wrapper {
@@ -46,21 +50,21 @@
         }
 
         /* Sembunyikan teks menu saat collapsed */
-        body.collapsed .menu-text, 
+        body.collapsed .menu-text,
         body.collapsed .sidebar-heading span,
         body.collapsed #saw-menu-arrow,
-        body.collapsed .uppercase { 
-            display: none !important; 
+        body.collapsed .uppercase {
+            display: none !important;
         }
 
         /* Pusatkan ikon saat collapsed */
-        body.collapsed nav a, 
+        body.collapsed nav a,
         body.collapsed #saw-menu-toggle {
             justify-content: center !important;
             padding-left: 0;
             padding-right: 0;
         }
-        
+
         body.collapsed #saw-menu-toggle span {
             margin: 0;
         }
@@ -75,6 +79,7 @@
             padding-left: 0;
             background-color: #f3f4f6;
         }
+
         .dark body.collapsed #saw-menu-content {
             background-color: #374151;
         }
@@ -82,22 +87,29 @@
         /* --- RESPONSIVE MOBILE --- */
         @media (max-width: 768px) {
             #sidebar-wrapper {
-                left: -16rem; /* Sembunyi total di mobile */
+                left: -16rem;
+                /* Sembunyi total di mobile */
             }
+
             #page-content-wrapper {
                 margin-left: 0;
                 width: 100%;
             }
+
             /* Saat toggled di mobile (muncul) */
             body.toggled #sidebar-wrapper {
                 left: 0;
             }
+
             /* Overlay gelap untuk mobile */
             body.toggled #page-content-wrapper::before {
                 content: "";
                 position: fixed;
-                top: 0; left: 0; right: 0; bottom: 0;
-                background: rgba(0,0,0,0.5);
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
                 z-index: 20;
             }
         }
@@ -106,74 +118,98 @@
 
 <body class="bg-gray-100 dark:bg-gray-900 font-sans">
     <div class="flex" id="wrapper">
-        
-        <div class="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm" id="sidebar-wrapper">
-            <div class="sidebar-heading h-16 flex items-center justify-between px-4 text-gray-900 dark:text-white font-bold text-xl border-b border-gray-200 dark:border-gray-700">
+
+        <div class="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm"
+            id="sidebar-wrapper">
+            <div
+                class="sidebar-heading h-16 flex items-center justify-between px-4 text-gray-900 dark:text-white font-bold text-xl border-b border-gray-200 dark:border-gray-700">
                 <span class="truncate">SPK SAW</span>
-                <button id="collapseBtn" class="text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded hidden md:block">
+                <button id="collapseBtn"
+                    class="text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded hidden md:block">
                     <i class="bi bi-list text-lg"></i>
                 </button>
             </div>
 
             <nav class="flex flex-col p-2 space-y-1 overflow-y-auto" style="height: calc(100vh - 4rem);">
-                
-                <p id="label-superadmin" class="text-gray-400 dark:text-gray-500 px-2 mt-4 mb-1 text-xs font-semibold uppercase truncate">Super Admin</p>
-                
-                <a href="#" id="menu-manajemen-admin" onclick="loadContent('manajemen-admin')" class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
-                    <i class="bi bi-person-gear text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+
+                <p id="label-superadmin"
+                    class="text-gray-400 dark:text-gray-500 px-2 mt-4 mb-1 text-xs font-semibold uppercase truncate">
+                    Super Admin</p>
+
+                <a href="#" id="menu-manajemen-admin" onclick="loadContent('manajemen-admin')"
+                    class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
+                    <i
+                        class="bi bi-person-gear text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
                     <span class="menu-text font-medium">Manajemen Admin</span>
                 </a>
-                
-                <a href="#" id="menu-backup-db" onclick="loadContent('backup-db')" class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
-                    <i class="bi bi-database-down text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+
+                <a href="#" id="menu-backup-db" onclick="loadContent('backup-db')"
+                    class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
+                    <i
+                        class="bi bi-database-down text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
                     <span class="menu-text font-medium">Backup Database</span>
                 </a>
-                <p id="label-main-panel" class="text-gray-400 dark:text-gray-500 px-2 mt-4 mb-1 text-xs font-semibold uppercase truncate">Admin Panel</p>
+                <p id="label-main-panel"
+                    class="text-gray-400 dark:text-gray-500 px-2 mt-4 mb-1 text-xs font-semibold uppercase truncate">
+                    Admin Panel</p>
 
-                <a href="#" onclick="loadContent('dashboard')" class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
-                    <i class="bi bi-grid-1x2-fill text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+                <a href="#" onclick="loadContent('dashboard')"
+                    class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
+                    <i
+                        class="bi bi-grid-1x2-fill text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
                     <span class="menu-text font-medium">Dashboard</span>
                 </a>
 
-                <a href="#" onclick="loadContent('alternatif')" class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
-                    <i class="bi bi-people-fill text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+                <a href="#" onclick="loadContent('alternatif')"
+                    class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
+                    <i
+                        class="bi bi-people-fill text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
                     <span class="menu-text font-medium">Data Alternatif</span>
                 </a>
 
-                <a href="#" onclick="loadContent('kriteria')" class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
-                    <i class="bi bi-list-task text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+                <a href="#" onclick="loadContent('kriteria')"
+                    class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
+                    <i
+                        class="bi bi-list-task text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
                     <span class="menu-text font-medium">Data Kriteria</span>
                 </a>
 
                 <div>
-                    <button id="saw-menu-toggle" class="w-full p-3 flex items-center justify-between text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
+                    <button id="saw-menu-toggle"
+                        class="w-full p-3 flex items-center justify-between text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
                         <div class="flex items-center">
-                            <i class="bi bi-bar-chart-line-fill text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+                            <i
+                                class="bi bi-bar-chart-line-fill text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
                             <span class="menu-text font-medium">Seleksi Metode SAW</span>
                         </div>
                         <i id="saw-menu-arrow" class="bi bi-chevron-down transition-transform duration-200 text-xs"></i>
                     </button>
-                    
+
                     <div id="saw-menu-content" class="hidden flex-col mt-1 space-y-1">
-                        <a href="#" onclick="loadContent('penilaian')" class="p-2 pl-11 flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors">
+                        <a href="#" onclick="loadContent('penilaian')"
+                            class="p-2 pl-11 flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors">
                             <span class="menu-text">Nilai Alternatif</span>
-                            <i class="bi bi-check-square-fill text-lg md:hidden body.collapsed:block"></i> 
+                            <i class="bi bi-check-square-fill text-lg md:hidden body.collapsed:block"></i>
                         </a>
-                        <a href="#" onclick="loadContent('perhitungan')" class="p-2 pl-11 flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors">
+                        <a href="#" onclick="loadContent('perhitungan')"
+                            class="p-2 pl-11 flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors">
                             <span class="menu-text">Hasil Perhitungan</span>
-                             <i class="bi bi-calculator-fill text-lg md:hidden body.collapsed:block"></i>
+                            <i class="bi bi-calculator-fill text-lg md:hidden body.collapsed:block"></i>
                         </a>
                     </div>
                 </div>
-                
+
                 <div class="my-2 border-t border-gray-200 dark:border-gray-700"></div>
 
-                <a href="#" onclick="loadContent('penjelasan-saw')" class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
-                    <i class="bi bi-info-circle-fill text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+                <a href="#" onclick="loadContent('penjelasan-saw')"
+                    class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
+                    <i
+                        class="bi bi-info-circle-fill text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
                     <span class="menu-text font-medium">Penjelasan SAW</span>
                 </a>
 
-                <a href="#" onclick="loadContent('chatbot')" class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
+                <a href="#" onclick="loadContent('chatbot')"
+                    class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
                     <i class="bi bi-robot text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
                     <span class="menu-text font-medium">Chatbot Asisten</span>
                 </a>
@@ -182,30 +218,44 @@
         </div>
 
         <div id="page-content-wrapper" class="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
-            
-            <header class="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 sticky top-0 z-20">
-                
+
+            <header
+                class="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 sticky top-0 z-20">
+
                 <button id="mobileToggle" class="md:hidden text-gray-700 dark:text-gray-300 text-2xl">
                     <i class="bi bi-list"></i>
                 </button>
 
-                <div class="flex-1"></div> 
+                <div class="flex-1"></div>
 
                 <div class="flex items-center space-x-4">
-                    <button id="theme-toggle" class="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg p-2">
+                    <button id="theme-toggle"
+                        class="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg p-2">
                         <i id="theme-toggle-dark-icon" class="bi bi-moon-fill hidden"></i>
                         <i id="theme-toggle-light-icon" class="bi bi-sun-fill hidden"></i>
                     </button>
 
                     <div class="relative">
-                        <button id="userMenuButton" class="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2 rounded-lg transition-colors">
+                        <button id="userMenuButton"
+                            class="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2 rounded-lg transition-colors">
                             <span id="userNameDisplay" class="font-medium text-sm">Admin</span>
                             <i class="bi bi-chevron-down text-xs"></i>
                         </button>
-                        <div id="userMenuDropdown" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-100 dark:border-gray-600 py-1 hidden">
-                            <a href="#" id="logoutBtn" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-600 flex items-center">
+                        <div id="userMenuDropdown"
+                            class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-100 dark:border-gray-600 py-1 hidden">
+
+                            <a href="#" id="menu-settings-web" onclick="openSettingsModal(); return false;"
+                                class="hidden block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600 flex items-center transition-colors">
+                                <i class="bi bi-palette-fill mr-2 text-indigo-500"></i> Tampilan Toko
+                            </a>
+
+                            <div class="border-t border-gray-100 dark:border-gray-600 my-1"></div>
+
+                            <a href="#" id="logoutBtn"
+                                class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-600 flex items-center transition-colors">
                                 <i class="bi bi-box-arrow-right mr-2"></i> Logout
                             </a>
+
                         </div>
                     </div>
                 </div>
@@ -213,12 +263,13 @@
 
             <main class="flex-1 p-6">
                 <div id="content-container">
-                    </div>
+                </div>
             </main>
         </div>
     </div>
 
-    <div id="modal-container" class="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 hidden p-4 backdrop-blur-sm"></div>
+    <div id="modal-container"
+        class="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 hidden p-4 backdrop-blur-sm"></div>
     <div id="toast-container" class="fixed top-5 right-5 z-[100] space-y-3"></div>
 
     <script>
@@ -258,7 +309,7 @@
         sawMenuToggle.addEventListener('click', () => {
             // Jika sedang collapsed, buka sidebar dulu (opsional, agar submenu terlihat)
             if (body.classList.contains('collapsed')) {
-                 body.classList.remove('collapsed');
+                body.classList.remove('collapsed');
             }
             sawMenuContent.classList.toggle('hidden');
             sawMenuArrow.classList.toggle('rotate-180');
@@ -318,4 +369,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>

@@ -4,6 +4,7 @@ require("dotenv").config();
 // ============================ file entry point (titik masuk)
 // IMPORT MODULES
 // ============================
+const path = require('path'); // Tambahkan ini di paling atas
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -19,6 +20,7 @@ const perhitunganRoutes = require('./app/routes/PerhitunganRoutes');
 const backupRoutes = require('./app/routes/backupRoutes');
 const adminRoutes = require('./app/routes/adminRoutes');
 const chatRoutes = require('./app/routes/chatRoutes');
+const settingRoutes = require('./app/routes/settingRoutes');
 
 
 // ============================
@@ -32,6 +34,9 @@ app.use(bodyParser.json());
 
 // Middleware CORS agar frontend (index.html) bisa akses API backend
 app.use(cors());
+
+// AGAR FOLDER UPLOADS BISA DIAKSES (Tambahkan baris ini sebelum routes)
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // Atur header agar API bisa diakses dari mana pun (terutama saat testing lokal)
 app.use((req, res, next) => {
@@ -55,7 +60,7 @@ app.use('/api/subkriteria', subKriteriaRoutes);
 app.use('/api/penilaian', penilaianRoutes);
 app.use('/api/perhitungan', perhitunganRoutes);
 app.use('/api/backup', backupRoutes);
-
+app.use('/api/settings', settingRoutes);
 // 🔐 Tambahan: Manajemen Admin (khusus super admin)
 app.use('/api/admin', adminRoutes);
 

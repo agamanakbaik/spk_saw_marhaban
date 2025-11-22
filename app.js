@@ -162,481 +162,619 @@ window.loadContent = async (page) => {
       return;
     }
 
-    // ======================
-    // DATA ALTERNATIF
+   // ======================
+    // DATA ALTERNATIF (Tombol Solid Style)
     // ======================
     if (page === "alternatif") {
-      container.innerHTML = `
-            <div class="flex justify-between items-center mb-4">
-              <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Data Alternatif</h2>
-              <button id="btnAddAlt" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition shadow-sm font-medium">
-                <i class="bi bi-plus-lg mr-1"></i> Tambah Alternatif
-              </button>
-            </div>
-            <div id="altTable" class="overflow-x-auto"></div>
-            `;
-      const tableContainer = document.getElementById("altTable");
-      const btnAdd = document.getElementById("btnAddAlt");
-      await loadAlternatifTable();
-      btnAdd.addEventListener("click", () => showAltModal());
-      async function loadAlternatifTable() {
-        try {
-          const res = await fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } });
-          const data = await res.json();
-          const alternatifs = (data.data || data || []).sort((a, b) => a.id - b.id);
-          if (!alternatifs.length) {
-            tableContainer.innerHTML = `<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg text-gray-500 dark:text-gray-400 text-center">Belum ada data alternatif.</div>`;
-            return;
-          }
-          const rows = alternatifs.map((a) => `
-                    <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${a.kode_alternatif}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${a.nama_periode}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${a.deskripsi || "-"}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
-                        <button class="px-3 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-md hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-300 dark:hover:bg-yellow-800 transition-colors" onclick='editAlt(${JSON.stringify(a)})'>Edit</button>
-                        <button class="px-3 py-1 text-xs font-medium text-red-800 bg-red-100 rounded-md hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 transition-colors" onclick='deleteAlt(${a.id})'>Hapus</button>
-                      </td>
-                    </tr>
-                  `).join("");
-          tableContainer.innerHTML = `
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-                  <table class="min-w-full">
-                    <thead class="bg-gray-50 dark:bg-gray-700">
-                      <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Kode</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama Periode</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Deskripsi</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
-                  </table>
-                </div>
-              `;
-        } catch (err) {
-          console.error(err);
-          tableContainer.innerHTML = `<p class="text-red-500">Gagal memuat data alternatif.</p>`;
-        }
-      }
-      window.showAltModal = (data = {}) => {
-        const modal = document.getElementById("modal-container");
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
-        modal.innerHTML = `
-              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
-                  <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
-                      <h3 class="text-xl font-semibold text-gray-800 dark:text-white">${data.id ? "Edit" : "Tambah"} Alternatif</h3>
-                      <button onclick="closeAltModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white text-3xl leading-none">&times;</button>
-                  </div>
-                  <form id="altForm">
-                      <div class="p-6 space-y-4">
-                          <input type="hidden" id="altId" value="${data.id || ""}">
-                          <div>
-                              <label for="kodeAlt" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kode Alternatif</label>
-                              <input type="text" id="kodeAlt" value="${data.kode_alternatif || ""}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
-                          </div>
-                          <div>
-                              <label for="namaAlt" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Periode</label>
-                              <input type="text" id="namaAlt" value="${data.nama_periode || ""}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
-                          </div>
-                          <div>
-                              <label for="descAlt" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Deskripsi</label>
-                              <textarea id="descAlt" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">${data.deskripsi || ""}</textarea>
-                          </div>
-                      </div>
-                      <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
-                          <button type="button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition" onclick="closeAltModal()">Batal</button>
-                          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">Simpan</button>
-                      </div>
-                  </form>
-              </div>
-            `;
-        document.getElementById("altForm").addEventListener("submit", saveAlt);
-      };
-      window.closeAltModal = () => {
-        document.getElementById("modal-container").classList.add("hidden");
-        document.getElementById("modal-container").innerHTML = "";
-      };
-      async function saveAlt(e) {
-        e.preventDefault();
-        const id = document.getElementById("altId").value;
-        const payload = {
-          kode_alternatif: document.getElementById("kodeAlt").value,
-          nama_periode: document.getElementById("namaAlt").value,
-          deskripsi: document.getElementById("descAlt").value,
-        };
-        const url = id ? `${API_BASE_URL}/alternatif/${id}` : `${API_BASE_URL}/alternatif`;
-        const method = id ? "PUT" : "POST";
-        try {
-          const res = await fetch(url, {
-            method,
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify(payload),
-          });
-          const result = await res.json();
-          if (!res.ok) throw new Error(result.message);
-          showToast(result.message || "Berhasil disimpan!");
-          closeAltModal();
-          await loadAlternatifTable();
-        } catch (err) {
-          console.error(err);
-          showToast(`Terjadi kesalahan: ${err.message}`, "error");
-        }
-      }
-      window.editAlt = (data) => showAltModal(data);
-      window.deleteAlt = async (id) => {
-        const confirmed = await showConfirm("Hapus Data", "Yakin ingin menghapus data alternatif ini?");
-        if (!confirmed) return;
-        try {
-          const res = await fetch(`${API_BASE_URL}/alternatif/${id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const result = await res.json();
-          if (!res.ok) throw new Error(result.message);
-          showToast(result.message || "Data berhasil dihapus!");
-          await loadAlternatifTable();
-        } catch (err) {
-          console.error(err);
-          showToast(`Gagal menghapus data: ${err.message}`, "error");
-        }
-      };
-      return;
-    }
+        let allAlternatifData = []; 
 
-    /// ======================
-    /// DATA KRITERIA
-    /// ======================
-    if (page === "kriteria") {
-      container.innerHTML = `
-        <div class="flex justify-between items-center mb-4">
-          <h2 id="pageTitle" class="text-2xl font-bold text-gray-800 dark:text-white">Data Kriteria</h2>
-          <button id="btnAddKrit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition shadow-sm font-medium">
-            <i class="bi bi-plus-lg mr-1"></i> Tambah Kriteria
-          </button>
-        </div>
-        <div id="kritTable" class="overflow-x-auto"></div>
-      `;
-      const tableContainer = document.getElementById("kritTable");
-      const btnAdd = document.getElementById("btnAddKrit");
-      const pageTitle = document.getElementById("pageTitle");
-      window.currentKriteriaId = null;
-      window.loadKriteriaTable = async function () {
-        pageTitle.innerText = "Data Kriteria";
-        try {
-          const res = await fetch(`${API_BASE_URL}/kriteria`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-          const kriterias = (Array.isArray(data) ? data : data.data || []).sort((a, b) => a.id - b.id);
-          if (!kriterias.length) {
-            tableContainer.innerHTML = `<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg text-gray-500 dark:text-gray-400 text-center">Belum ada data kriteria.</div>`;
-            return;
-          }
-          const rows = kriterias
-            .map(
-              (k) => `
-                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${k.kode}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${k.nama}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${parseFloat(k.bobot)}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${k.tipe.toLowerCase() === 'benefit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                      ${k.tipe}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
-                    <button class="px-3 py-1 text-xs font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 transition-colors"
-                      onclick='openSubKriteria(${k.id}, "${k.nama}")'>Sub Kriteria</button>
-                    <button class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors"
-                      onclick='showKritModal(${JSON.stringify(k)})'>Edit</button>
-                    <button class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors"
-                      onclick='deleteKrit(${k.id})'>Hapus</button>
-                  </td>
-                </tr>
-              `
-            )
-            .join("");
-          tableContainer.innerHTML = `
-              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-                <table class="min-w-full">
-                  <thead class="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Kode</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama Kriteria</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bobot</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tipe</th>
-                      <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
-                </table>
-              </div>
-              `;
-        } catch (err) {
-          console.error(err);
-          tableContainer.innerHTML = `<p class="text-red-500">Gagal memuat data kriteria.</p>`;
-        }
-      };
-      window.openSubKriteria = async function (id, namaKriteria) {
-        window.currentKriteriaId = id;
-        const kriteriaId = id;
-        tableContainer.innerHTML = `<div class="p-4 text-center text-indigo-500 dark:text-indigo-400">Memuat sub kriteria...</div>`;
-        pageTitle.innerText = `Sub Kriteria - ${namaKriteria}`;
-        try {
-          const res = await fetch(
-            `${API_BASE_URL}/subkriteria?kriteria_id=${kriteriaId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-          );
-          if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.message || "Gagal memuat sub kriteria.");
-          }
-          const data = await res.json();
-          const subkrits = (Array.isArray(data) ? data : data.data || []).sort((a, b) => a.id - b.id);
-          const rows = subkrits.length ?
-            subkrits
-              .map(
-                (s, i) => `
-                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${i + 1}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${s.nama}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${s.nilai}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${s.keterangan || '-'}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
-                    <button class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors"
-                      onclick='showSubKritModal(${JSON.stringify({ ...s, kriteria_id: kriteriaId })})'>Edit</button>
-                    <button class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors"
-                      onclick='deleteSubKrit(${s.id}, ${kriteriaId})'>Hapus</button>
-                  </td>
-                </tr>
-                `
-              )
-              .join("") :
-            `<tr><td colspan="5" class="text-center text-gray-500 dark:text-gray-400 py-4">Belum ada sub kriteria.</td></tr>`;
-          tableContainer.innerHTML = `
-                <div class="mb-4 flex items-center space-x-2 cetak-sembunyi">
-                  <button class="bg-gray-600 text-white px-3 py-2 rounded-md hover:bg-gray-700 text-sm transition" onclick="loadKriteriaTable()">
-                    <i class="bi bi-arrow-left mr-1"></i> Kembali
-                  </button>
-                  <button class="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm transition"
-                    onclick='showSubKritModal({ kriteria_id: ${kriteriaId} })'>
-                    <i class="bi bi-plus-lg mr-1"></i> Tambah Sub Kriteria
-                  </button>
+        container.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                
+                <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50/50 dark:bg-gray-800/50">
+                    
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Data Alternatif</h2>
+                        <span id="totalDataBadge" class="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold hidden">0</span>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row w-full md:w-auto items-center gap-3">
+                        <div class="relative w-full md:w-64 group">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 group-focus-within:text-blue-500 transition">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" id="searchAlt" placeholder="Cari data..." 
+                                class="pl-10 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-sm w-full focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition outline-none">
+                        </div>
+
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <button id="btnDeleteAll" class="flex-1 md:flex-none px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition flex items-center justify-center dark:bg-gray-800 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-900/20">
+                                <i class="bi bi-trash3 mr-2"></i> Reset
+                            </button>
+                            <button id="btnAddAlt" class="flex-1 md:flex-none px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center shadow-sm">
+                                <i class="bi bi-plus-lg mr-2"></i> Tambah Data
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-                  <table class="min-w-full">
-                    <thead class="bg-gray-50 dark:bg-gray-700">
-                      <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sub Kriteria</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nilai</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Keterangan</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
-                      </tr>
+
+                <div id="altTable" class="overflow-x-auto min-h-[300px]">
+                    <div class="p-10 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center">
+                        <span class="spinner-border mb-2"></span>
+                        <span>Memuat data...</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const tableContainer = document.getElementById("altTable");
+        const btnAdd = document.getElementById("btnAddAlt");
+        const btnDeleteAll = document.getElementById("btnDeleteAll");
+        const searchInput = document.getElementById("searchAlt");
+        const badgeTotal = document.getElementById("totalDataBadge");
+
+        await loadAlternatifData();
+
+        // === EVENT LISTENERS ===
+        btnAdd.addEventListener("click", () => showAltModal());
+        
+        searchInput.addEventListener("input", (e) => {
+            const keyword = e.target.value.toLowerCase();
+            const filteredData = allAlternatifData.filter(item => 
+                item.kode_alternatif.toLowerCase().includes(keyword) ||
+                item.nama_periode.toLowerCase().includes(keyword) ||
+                (item.deskripsi && item.deskripsi.toLowerCase().includes(keyword))
+            );
+            renderAlternatifTable(filteredData);
+        });
+
+        btnDeleteAll.addEventListener("click", async () => {
+            if (allAlternatifData.length === 0) return showToast("Data kosong.", "error");
+            const confirmed = await showConfirm("Hapus Semua?", "PERINGATAN: Semua data alternatif akan dihapus permanen.");
+            if (!confirmed) return;
+
+            const originalContent = btnDeleteAll.innerHTML;
+            btnDeleteAll.disabled = true;
+            btnDeleteAll.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+
+            try {
+                const deletePromises = allAlternatifData.map(item => 
+                    fetch(`${API_BASE_URL}/alternatif/${item.id}`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` }
+                    })
+                );
+                await Promise.all(deletePromises);
+                showToast("Data berhasil di-reset!", "success");
+                await loadAlternatifData();
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal menghapus sebagian data.", "error");
+                await loadAlternatifData();
+            } finally {
+                btnDeleteAll.disabled = false;
+                btnDeleteAll.innerHTML = originalContent;
+            }
+        });
+
+        // === FUNCTIONS ===
+        async function loadAlternatifData() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } });
+                const data = await res.json();
+                allAlternatifData = (data.data || data || []).sort((a, b) => a.id - b.id);
+                badgeTotal.innerText = allAlternatifData.length;
+                badgeTotal.classList.remove('hidden');
+                renderAlternatifTable(allAlternatifData);
+            } catch (err) {
+                console.error(err);
+                tableContainer.innerHTML = `<div class="p-10 text-center text-red-500">Gagal terhubung ke server.</div>`;
+            }
+        }
+
+        function renderAlternatifTable(data) {
+            if (!data.length) {
+                tableContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <div class="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-full mb-3">
+                        <i class="bi bi-folder2-open text-3xl text-gray-400 dark:text-gray-500"></i>
+                    </div>
+                    <p class="text-sm font-medium">Tidak ada data ditemukan.</p>
+                </div>`;
+                return;
+            }
+
+            const rows = data.map((a, index) => `
+                <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center w-16 font-mono">${index + 1}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold mr-3 dark:bg-blue-900/30 dark:text-blue-400">
+                                ${a.kode_alternatif}
+                            </div>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">${a.nama_periode}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        ${a.deskripsi ? `<span class="truncate max-w-xs block" title="${a.deskripsi}">${a.deskripsi}</span>` : '<span class="text-gray-300 italic">-</span>'}
+                    </td>
+                    
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div class="flex justify-end gap-2">
+                            <button onclick='editAlt(${JSON.stringify(a)})' 
+                                class="px-4 py-1.5 text-xs font-bold text-white bg-yellow-500 hover:bg-yellow-600 rounded-md shadow-sm transition-colors">
+                                Edit
+                            </button>
+
+                            <button onclick='deleteAlt(${a.id})' 
+                                class="px-4 py-1.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-md shadow-sm transition-colors">
+                                Hapus
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join("");
+
+            tableContainer.innerHTML = `
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50/80 dark:bg-gray-700/50 backdrop-blur-sm">
+                        <tr>
+                            <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">No</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Alternatif</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deskripsi</th>
+                            <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Opsi</th>
+                        </tr>
                     </thead>
-                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
-                  </table>
-                </div>
-              `;
-        } catch (err) {
-          console.error(err);
-          tableContainer.innerHTML = `<p class="text-red-500">Gagal memuat sub kriteria: ${err.message || "Periksa konsol."}</p>`;
-        }
-      };
-      window.showSubKritModal = (data = {}) => {
-        const modal = document.getElementById("modal-container");
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
-        const title = data.id ? "Edit Sub Kriteria" : "Tambah Sub Kriteria";
-        const kriteriaId = data.kriteria_id || window.currentKriteriaId;
-        if (!kriteriaId) {
-          showToast("Error: ID Kriteria tidak ditemukan.", "error");
-          closeSubKritModal();
-          return;
-        }
-        modal.innerHTML = `
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
-                <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
-                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white">${title}</h3>
-                    <button onclick="closeSubKritModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white text-3xl leading-none">&times;</button>
-                </div>
-                <form id="subKritForm">
-                    <div class="p-6 space-y-4">
-                        <input type="hidden" id="subKritId" value="${data.id || ""}">
-                        <input type="hidden" id="kriteriaIdInput" value="${kriteriaId}">
-                        <div>
-                            <label for="namaSubKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Sub Kriteria</label>
-                            <input type="text" id="namaSubKrit" value="${data.nama || ""}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
-                        </div>
-                        <div>
-                            <label for="keteranganSubKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Keterangan (Opsional)</label>
-                            <textarea id="keteranganSubKrit" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" rows="3">${data.keterangan || ""}</textarea>
-                        </div>
-                        <div>
-                            <label for="nilaiSubKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nilai</label>
-                            <input type="number" id="nilaiSubKrit" value="${data.nilai || ""}" step="1" min="1" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
-                        </div>
-                    </div>
-                    <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
-                        <button type="button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition" onclick="closeSubKritModal()">Batal</button>
-                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">Simpan</button>
-                    </div>
-                </form>
-            </div>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
+                        ${rows}
+                    </tbody>
+                </table>
             `;
-        document.getElementById("subKritForm").addEventListener("submit", saveSubKrit);
-      };
-      window.closeSubKritModal = () => {
-        document.getElementById("modal-container").classList.add("hidden");
-        document.getElementById("modal-container").innerHTML = "";
-      };
-      async function saveSubKrit(e) {
-        e.preventDefault();
-        const id = document.getElementById("subKritId").value;
-        const kriteria_id = document.getElementById("kriteriaIdInput").value;
-        const payload = {
-          kriteria_id: parseInt(kriteria_id),
-          nama: document.getElementById("namaSubKrit").value,
-          nilai: parseInt(document.getElementById("nilaiSubKrit").value),
-          keterangan: document.getElementById("keteranganSubKrit").value || null
+        }
+
+        // === MODAL & CRUD (TETAP SAMA) ===
+        window.showAltModal = (data = {}) => {
+            const modal = document.getElementById("modal-container");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+            modal.innerHTML = `
+                  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-auto transform transition-all duration-300 scale-100 overflow-hidden">
+                      <div class="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                          <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                             <i class="bi bi-layers text-blue-600"></i> ${data.id ? "Edit Data" : "Data Baru"}
+                          </h3>
+                          <button onclick="closeAltModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white text-2xl leading-none transition">&times;</button>
+                      </div>
+                      <form id="altForm">
+                          <div class="p-6 space-y-4">
+                              <input type="hidden" id="altId" value="${data.id || ""}">
+                              <div>
+                                  <label for="kodeAlt" class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Kode Alternatif</label>
+                                  <input type="text" id="kodeAlt" value="${data.kode_alternatif || ""}" class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" required placeholder="Contoh: A1">
+                              </div>
+                              <div>
+                                  <label for="namaAlt" class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Nama Periode</label>
+                                  <input type="text" id="namaAlt" value="${data.nama_periode || ""}" class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" required placeholder="Contoh: Januari 2024">
+                              </div>
+                              <div>
+                                  <label for="descAlt" class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Deskripsi (Opsional)</label>
+                                  <textarea id="descAlt" rows="3" class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="Keterangan tambahan...">${data.deskripsi || ""}</textarea>
+                              </div>
+                          </div>
+                          <div class="p-5 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700 flex justify-end space-x-3">
+                              <button type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500 transition" onclick="closeAltModal()">Batal</button>
+                              <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition flex items-center">
+                                <i class="bi bi-check-lg mr-1"></i> Simpan
+                              </button>
+                          </div>
+                      </form>
+                  </div>
+                `;
+            document.getElementById("altForm").addEventListener("submit", saveAlt);
         };
-        const url = id ? `${API_BASE_URL}/subkriteria/${id}` : `${API_BASE_URL}/subkriteria`;
-        const method = id ? "PUT" : "POST";
-        const pageTitleText = document.getElementById("pageTitle").innerText;
-        const namaKriteria = pageTitleText.replace("Sub Kriteria - ", "");
-        try {
-          const res = await fetch(url, {
-            method,
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify(payload),
-          });
-          const result = await res.json();
-          if (!res.ok) throw new Error(result.message);
-          showToast(result.message || "Sub Kriteria berhasil disimpan!");
-          closeSubKritModal();
-          await openSubKriteria(kriteria_id, namaKriteria);
-        } catch (err) {
-          console.error(err);
-          showToast(`Terjadi kesalahan: ${err.message}`, "error");
+
+        window.closeAltModal = () => {
+            document.getElementById("modal-container").classList.add("hidden");
+            document.getElementById("modal-container").innerHTML = "";
+        };
+
+        async function saveAlt(e) {
+            e.preventDefault();
+            const id = document.getElementById("altId").value;
+            const payload = {
+                kode_alternatif: document.getElementById("kodeAlt").value,
+                nama_periode: document.getElementById("namaAlt").value,
+                deskripsi: document.getElementById("descAlt").value,
+            };
+            const url = id ? `${API_BASE_URL}/alternatif/${id}` : `${API_BASE_URL}/alternatif`;
+            const method = id ? "PUT" : "POST";
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                    body: JSON.stringify(payload),
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.message);
+                showToast(result.message || "Berhasil disimpan!");
+                closeAltModal();
+                await loadAlternatifData();
+            } catch (err) {
+                console.error(err);
+                showToast(`Terjadi kesalahan: ${err.message}`, "error");
+            }
         }
-      }
-      window.deleteSubKrit = async (id, kriteria_id) => {
-        const confirmed = await showConfirm("Hapus Data", "Yakin hapus sub kriteria ini?");
-        if (confirmed) {
-          const pageTitleText = document.getElementById("pageTitle").innerText;
-          const namaKriteria = pageTitleText.replace("Sub Kriteria - ", "");
-          try {
-            const res = await fetch(`${API_BASE_URL}/subkriteria/${id}`, {
-              method: "DELETE",
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.message);
-            showToast(result.message || "Sub Kriteria berhasil dihapus!");
-            await openSubKriteria(kriteria_id, namaKriteria);
-          } catch (err) {
-            console.error(err);
-            showToast(`Gagal menghapus data: ${err.message}`, "error");
-          }
-        }
-      };
-      window.editKrit = (data) => showKritModal(data);
-      window.deleteKrit = async (id) => {
-        const confirmed = await showConfirm("Hapus Kriteria", "Yakin ingin menghapus kriteria ini? Semua sub-kriteria yang terkait akan ikut terhapus.");
-        if (!confirmed) return;
-        try {
-          const res = await fetch(`${API_BASE_URL}/kriteria/${id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const result = await res.json();
-          if (!res.ok) throw new Error(result.message);
-          showToast(result.message || "Data berhasil dihapus!");
-          await loadKriteriaTable();
-        } catch (err) {
-          console.error(err);
-          showToast(`Gagal menghapus data: ${err.message}`, "error");
-        }
-      };
-      window.showKritModal = (data = {}) => {
-        const modal = document.getElementById("modal-container");
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
-        modal.innerHTML = `
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-auto transform transition-all duration-300 scale-100">
-                <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
-                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white">${data.id ? "Edit" : "Tambah"} Kriteria</h3>
-                    <button onclick="closeKritModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white text-3xl leading-none">&times;</button>
+
+        window.editAlt = (data) => showAltModal(data);
+        window.deleteAlt = async (id) => {
+            const confirmed = await showConfirm("Hapus Data", "Yakin ingin menghapus data alternatif ini?");
+            if (!confirmed) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/alternatif/${id}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.message);
+                showToast(result.message || "Data berhasil dihapus!");
+                await loadAlternatifData();
+            } catch (err) {
+                console.error(err);
+                showToast(`Gagal menghapus data: ${err.message}`, "error");
+            }
+        };
+        return;
+    }
+    
+    // ======================
+    // DATA KRITERIA (Full Code: Reset Font Medium)
+    // ======================
+    if (page === "kriteria") {
+        let allKriteriaData = []; 
+        window.currentKriteriaId = null;
+
+        // 1. RENDER CONTAINER UTAMA
+        container.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                
+                <div id="mainToolbar" class="p-5 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50/50 dark:bg-gray-800/50">
+                    
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <h2 id="pageTitle" class="text-xl font-bold text-gray-800 dark:text-white">Data Kriteria</h2>
+                        <span id="totalKriteriaBadge" class="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold hidden">0</span>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row w-full md:w-auto items-center gap-3">
+                        
+                        <div class="relative w-full md:w-64 group">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 group-focus-within:text-blue-500 transition">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" id="searchKrit" placeholder="Cari kriteria..." 
+                                class="pl-10 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-sm w-full focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition outline-none">
+                        </div>
+
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <button id="btnDeleteAllKrit" class="flex-1 md:flex-none px-4 py-2 text-sm font-medium text-red-500 bg-white border border-red-300 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-400 transition flex items-center justify-center shadow-sm dark:bg-gray-800 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20">
+                                <i class="bi bi-trash3 mr-2"></i> Reset
+                            </button>
+
+                            <button id="btnAddKrit" class="flex-1 md:flex-none px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center shadow-sm">
+                                <i class="bi bi-plus-lg mr-2"></i> Tambah Kriteria
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <form id="kritForm">
-                    <div class="p-6 space-y-4">
+
+                <div id="kritTable" class="overflow-x-auto min-h-[300px]">
+                    <div class="p-10 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center">
+                        <span class="spinner-border mb-2"></span>
+                        <span>Memuat data...</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const tableContainer = document.getElementById("kritTable");
+        const btnAdd = document.getElementById("btnAddKrit");
+        const btnDeleteAll = document.getElementById("btnDeleteAllKrit");
+        const searchInput = document.getElementById("searchKrit");
+        const badgeTotal = document.getElementById("totalKriteriaBadge");
+        const pageTitle = document.getElementById("pageTitle");
+        const mainToolbar = document.getElementById("mainToolbar");
+
+        await loadKriteriaData();
+
+        // === EVENT LISTENER UTAMA ===
+        btnAdd.addEventListener("click", () => showKritModal());
+        
+        searchInput.addEventListener("input", (e) => {
+            const keyword = e.target.value.toLowerCase();
+            const filteredData = allKriteriaData.filter(item => 
+                item.kode.toLowerCase().includes(keyword) ||
+                item.nama.toLowerCase().includes(keyword) ||
+                item.tipe.toLowerCase().includes(keyword)
+            );
+            renderKriteriaTable(filteredData);
+        });
+
+        btnDeleteAll.addEventListener("click", async () => {
+            if (allKriteriaData.length === 0) return showToast("Data kosong.", "error");
+            if (!await showConfirm("Hapus Semua?", "PERINGATAN: Semua kriteria DAN sub-kriterianya akan dihapus.")) return;
+
+            const originalContent = btnDeleteAll.innerHTML;
+            btnDeleteAll.disabled = true;
+            btnDeleteAll.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+
+            try {
+                const deletePromises = allKriteriaData.map(item => 
+                    fetch(`${API_BASE_URL}/kriteria/${item.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+                );
+                await Promise.all(deletePromises);
+                showToast("Semua data berhasil di-reset!", "success");
+                await loadKriteriaData();
+            } catch (err) {
+                showToast("Gagal menghapus sebagian data.", "error");
+                await loadKriteriaData();
+            } finally {
+                btnDeleteAll.disabled = false;
+                btnDeleteAll.innerHTML = originalContent;
+            }
+        });
+
+        // === FUNGSI LOAD DATA UTAMA ===
+        async function loadKriteriaData() {
+            pageTitle.innerText = "Data Kriteria";
+            mainToolbar.style.display = "flex"; 
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } });
+                const data = await res.json();
+                allKriteriaData = (Array.isArray(data) ? data : data.data || []).sort((a,b) => a.id - b.id);
+                
+                badgeTotal.innerText = allKriteriaData.length;
+                badgeTotal.classList.remove('hidden');
+
+                renderKriteriaTable(allKriteriaData);
+            } catch (err) {
+                tableContainer.innerHTML = `<div class="p-10 text-center text-red-500">Gagal memuat data.</div>`;
+            }
+        }
+        window.loadKriteriaTable = loadKriteriaData; 
+
+        function renderKriteriaTable(data) {
+            if (!data.length) {
+                tableContainer.innerHTML = `<div class="p-12 text-center text-gray-400">Tidak ada data kriteria.</div>`;
+                return;
+            }
+
+            const rows = data.map((k, index) => `
+                <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
+                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-center w-16 font-mono">${index + 1}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold mr-3 dark:bg-blue-900/30 dark:text-blue-400">${k.kode}</div>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">${k.nama}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">${parseFloat(k.bobot)}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${k.tipe.toLowerCase() === 'benefit' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'}">${k.tipe}</span>
+                    </td>
+                    <td class="px-6 py-4 text-right text-sm font-medium">
+                        <div class="flex justify-end gap-2">
+                            <button onclick='openSubKriteria(${k.id}, "${k.nama}")' class="px-3 py-1.5 text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 rounded-md shadow-sm transition-colors">Sub Kriteria</button>
+                            <button onclick='showKritModal(${JSON.stringify(k)})' class="px-4 py-1.5 text-xs font-bold text-white bg-yellow-500 hover:bg-yellow-600 rounded-md shadow-sm transition-colors">Edit</button>
+                            <button onclick='deleteKrit(${k.id})' class="px-4 py-1.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-md shadow-sm transition-colors">Hapus</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join("");
+
+            tableContainer.innerHTML = `
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50/80 dark:bg-gray-700/50 backdrop-blur-sm">
+                        <tr>
+                            <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">No</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Kriteria</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Bobot</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Tipe</th>
+                            <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">${rows}</tbody>
+                </table>
+            `;
+        }
+
+        // ============================================
+        // FUNGSI LOGIKA SUB KRITERIA (DENGAN SEARCH)
+        // ============================================
+
+        window.openSubKriteria = async function (id, namaKriteria) {
+            window.currentKriteriaId = id;
+            mainToolbar.style.display = "none"; 
+            tableContainer.innerHTML = `<div class="p-10 text-center"><span class="spinner-border text-blue-500"></span> Memuat sub kriteria...</div>`;
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/subkriteria?kriteria_id=${id}`, { headers: { Authorization: `Bearer ${token}` } });
+                const data = await res.json();
+                let allSubData = (Array.isArray(data) ? data : data.data || []).sort((a,b) => a.id - b.id);
+
+                const renderSubRows = (subData) => {
+                    if (!subData.length) return `<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="bi bi-list-nested text-3xl mb-2"></i><br>Data tidak ditemukan.</td></tr>`;
+                    
+                    return subData.map((s, i) => `
+                        <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
+                            <td class="px-6 py-4 text-center text-sm text-gray-500 w-16 font-mono">${i + 1}</td>
+                            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">${s.nama}</td>
+                            <td class="px-6 py-4"><span class="inline-block px-2 py-1 text-xs font-bold text-gray-700 bg-gray-100 rounded border border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">${s.nilai}</span></td>
+                            <td class="px-6 py-4 text-sm text-gray-500 italic">${s.keterangan || '-'}</td>
+                            <td class="px-6 py-4 text-right whitespace-nowrap">
+                                <div class="flex justify-end gap-2">
+                                    <button onclick='showSubKritModal(${JSON.stringify({ ...s, kriteria_id: id })})' class="px-4 py-1.5 text-xs font-bold text-white bg-yellow-500 hover:bg-yellow-600 rounded-md shadow-sm transition-colors">Edit</button>
+                                    <button onclick='deleteSubKrit(${s.id}, ${id})' class="px-4 py-1.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-md shadow-sm transition-colors">Hapus</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join("");
+                };
+
+                const subHeader = `
+                    <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center bg-blue-50/50 dark:bg-blue-900/10 gap-4">
+                        <div class="flex items-center gap-4 w-full md:w-auto">
+                            <button onclick="loadKriteriaTable()" class="p-2 rounded-full hover:bg-white dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition shadow-sm" title="Kembali">
+                                <i class="bi bi-arrow-left text-lg"></i>
+                            </button>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-800 dark:text-white">Sub Kriteria</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Untuk: <b>${namaKriteria}</b></p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col md:flex-row w-full md:w-auto items-center gap-2">
+                            <div class="relative w-full md:w-48">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                    <i class="bi bi-search text-xs"></i>
+                                </span>
+                                <input type="text" id="searchSubKrit" placeholder="Cari sub..." 
+                                    class="pl-8 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+
+                            <div class="flex gap-2">
+                                <button id="btnResetSub" class="px-3 py-2 text-sm font-medium text-red-500 bg-white border border-red-300 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-400 transition flex items-center shadow-sm dark:bg-gray-800 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20">
+                                    <i class="bi bi-trash3 mr-1"></i> Reset
+                                </button>
+
+                                <button onclick='showSubKritModal({ kriteria_id: ${id} })' class="px-3 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition flex items-center">
+                                    <i class="bi bi-plus-lg mr-1"></i> Tambah
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                const renderTable = (rowsHtml) => `
+                    ${subHeader}
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700/50">
+                            <tr>
+                                <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">No</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nama Sub</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nilai</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Ket</th>
+                                <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">${rowsHtml}</tbody>
+                    </table>
+                `;
+
+                tableContainer.innerHTML = renderTable(renderSubRows(allSubData));
+
+                const searchSubInput = document.getElementById('searchSubKrit');
+                const tbody = document.getElementById('subTableBody');
+                
+                searchSubInput.addEventListener('input', (e) => {
+                    const keyword = e.target.value.toLowerCase();
+                    const filtered = allSubData.filter(s => 
+                        s.nama.toLowerCase().includes(keyword) || 
+                        (s.keterangan && s.keterangan.toLowerCase().includes(keyword))
+                    );
+                    tbody.innerHTML = renderSubRows(filtered);
+                });
+
+                const btnResetSub = document.getElementById('btnResetSub');
+                if(btnResetSub) {
+                    btnResetSub.addEventListener('click', async () => {
+                        if (allSubData.length === 0) return showToast("Data kosong.", "error");
+                        if (!await showConfirm("Reset Sub Kriteria?", `Hapus semua sub kriteria untuk "${namaKriteria}"?`)) return;
+
+                        const originalHtml = btnResetSub.innerHTML;
+                        btnResetSub.disabled = true;
+                        btnResetSub.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+
+                        try {
+                            const deletePromises = allSubData.map(item => 
+                                fetch(`${API_BASE_URL}/subkriteria/${item.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+                            );
+                            await Promise.all(deletePromises);
+                            showToast("Sub kriteria berhasil di-reset!", "success");
+                            openSubKriteria(id, namaKriteria);
+                        } catch (err) {
+                            showToast("Gagal menghapus sebagian data.", "error");
+                            openSubKriteria(id, namaKriteria);
+                        }
+                    });
+                }
+
+            } catch (err) {
+                showToast(`Gagal: ${err.message}`, "error");
+            }
+        };
+
+        // ============================================
+        // MODAL & CRUD HELPER
+        // ============================================
+        window.showKritModal = (data = {}) => {
+            const modal = document.getElementById("modal-container"); modal.classList.remove("hidden"); modal.classList.add("flex");
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-auto overflow-hidden">
+                    <div class="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/50">
+                        <h3 class="font-bold text-gray-800 dark:text-white">${data.id ? "Edit" : "Tambah"} Kriteria</h3>
+                        <button onclick="closeKritModal()" class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
+                    </div>
+                    <form id="kritForm" class="p-6 space-y-4">
                         <input type="hidden" id="kritId" value="${data.id || ""}">
-                        <div>
-                            <label for="kodeKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kode Kriteria</label>
-                            <input type="text" id="kodeKrit" value="${data.kode || ""}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">KODE</label><input type="text" id="kodeKrit" value="${data.kode || ""}" class="w-full border rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" required placeholder="C1"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">NAMA</label><input type="text" id="namaKrit" value="${data.nama || ""}" class="w-full border rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" required></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">BOBOT</label><input type="number" id="bobotKrit" value="${parseFloat(data.bobot) || ""}" step="0.01" class="w-full border rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" required></div>
+                            <div><label class="block text-xs font-bold text-gray-500 mb-1">TIPE</label><select id="tipeKrit" class="w-full border rounded-lg p-2.5 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"><option value="Benefit" ${data.tipe === "Benefit" ? "selected" : ""}>Benefit</option><option value="Cost" ${data.tipe === "Cost" ? "selected" : ""}>Cost</option></select></div>
                         </div>
-                        <div>
-                            <label for="namaKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Kriteria</label>
-                            <input type="text" id="namaKrit" value="${data.nama || ""}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
-                        </div>
-                        <div>
-                            <label for="bobotKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Bobot</label>
-                            <input type="number" id="bobotKrit" value="${parseFloat(data.bobot) || ""}" step="0.01" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
-                        </div>
-                        <div>
-                            <label for="tipeKrit" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipe</label>
-                            <select id="tipeKrit" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="Benefit" ${data.tipe === "Benefit" ? "selected" : ""}>Benefit</option>
-                                <option value="Cost" ${data.tipe === "Cost" ? "selected" : ""}>Cost</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
-                        <button type="button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition" onclick="closeKritModal()">Batal</button>
-                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-semibold">Simpan</button>
-                    </div>
-                </form>
-            </div>
-            `;
-        document.getElementById("kritForm").addEventListener("submit", saveKrit);
-      };
-      window.closeKritModal = () => {
-        document.getElementById("modal-container").classList.add("hidden");
-        document.getElementById("modal-container").innerHTML = "";
-      };
-      async function saveKrit(e) {
-        e.preventDefault();
-        const id = document.getElementById("kritId").value;
-        const payload = {
-          kode: document.getElementById("kodeKrit").value,
-          nama: document.getElementById("namaKrit").value,
-          bobot: document.getElementById("bobotKrit").value,
-          tipe: document.getElementById("tipeKrit").value,
+                        <div class="pt-4 flex justify-end gap-2"><button type="button" onclick="closeKritModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">Batal</button><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-sm">Simpan</button></div>
+                    </form>
+                </div>`;
+            document.getElementById("kritForm").addEventListener("submit", saveKrit);
         };
-        const url = id ? `${API_BASE_URL}/kriteria/${id}` : `${API_BASE_URL}/kriteria`;
-        const method = id ? "PUT" : "POST";
-        try {
-          const res = await fetch(url, {
-            method,
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify(payload),
-          });
-          const result = await res.json();
-          if (!res.ok) throw new Error(result.message);
-          showToast(result.message || "Berhasil disimpan!");
-          closeKritModal();
-          await loadKriteriaTable();
-        } catch (err) {
-          console.error(err);
-          showToast(`Terjadi kesalahan: ${err.message}`, "error");
+        window.closeKritModal = () => { document.getElementById("modal-container").classList.add("hidden"); document.getElementById("modal-container").innerHTML = ""; };
+        async function saveKrit(e) {
+            e.preventDefault(); const id = document.getElementById("kritId").value;
+            const payload = { kode: document.getElementById("kodeKrit").value, nama: document.getElementById("namaKrit").value, bobot: document.getElementById("bobotKrit").value, tipe: document.getElementById("tipeKrit").value };
+            try {
+                const res = await fetch(id ? `${API_BASE_URL}/kriteria/${id}` : `${API_BASE_URL}/kriteria`, { method: id ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+                if (!res.ok) throw new Error((await res.json()).message);
+                showToast("Berhasil!"); closeKritModal(); loadKriteriaData();
+            } catch (err) { showToast(err.message, "error"); }
         }
-      }
-      await loadKriteriaTable();
-      btnAdd.addEventListener("click", () => showKritModal());
-      return;
+        window.deleteKrit = async (id) => { if (await showConfirm("Hapus?", "Yakin?")) { try { await fetch(`${API_BASE_URL}/kriteria/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }); showToast("Terhapus!"); loadKriteriaData(); } catch (e) { showToast(e.message, "error"); } } };
+
+        window.showSubKritModal = (data = {}) => {
+            const modal = document.getElementById("modal-container"); modal.classList.remove("hidden"); modal.classList.add("flex");
+            const kId = data.kriteria_id || window.currentKriteriaId;
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm m-auto overflow-hidden">
+                    <div class="p-4 border-b bg-gray-50 dark:bg-gray-700 flex justify-between"><h3 class="font-bold dark:text-white">Sub Kriteria</h3><button onclick="closeSubKritModal()" class="text-2xl">&times;</button></div>
+                    <form id="subForm" class="p-5 space-y-3">
+                        <input type="hidden" id="sId" value="${data.id||''}"><input type="hidden" id="kId" value="${kId}">
+                        <input class="w-full border p-2 rounded dark:bg-gray-700 dark:text-white" id="sNama" placeholder="Nama Sub" value="${data.nama||''}" required>
+                        <input class="w-full border p-2 rounded dark:bg-gray-700 dark:text-white" type="number" id="sNilai" placeholder="Nilai" value="${data.nilai||''}" required>
+                        <textarea class="w-full border p-2 rounded dark:bg-gray-700 dark:text-white" id="sKet" placeholder="Keterangan">${data.keterangan||''}</textarea>
+                        <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded font-bold">Simpan</button>
+                    </form>
+                </div>`;
+            document.getElementById("subForm").onsubmit = async (e) => {
+                e.preventDefault();
+                const p = { kriteria_id: parseInt(kId), nama: document.getElementById("sNama").value, nilai: parseInt(document.getElementById("sNilai").value), keterangan: document.getElementById("sKet").value };
+                const url = p.id = document.getElementById("sId").value; 
+                try { await fetch(url ? `${API_BASE_URL}/subkriteria/${url}` : `${API_BASE_URL}/subkriteria`, { method: url?"PUT":"POST", headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`}, body:JSON.stringify(p)});
+                closeSubKritModal(); openSubKriteria(kId, document.getElementById("pageTitle").innerText.split(": ")[1] || ""); } catch(err) { showToast(err.message, "error"); }
+            };
+        };
+        window.closeSubKritModal = () => { document.getElementById("modal-container").classList.add("hidden"); document.getElementById("modal-container").innerHTML = ""; };
+        window.deleteSubKrit = async (id, kId) => { if(await showConfirm("Hapus?", "Yakin?")) { try { await fetch(`${API_BASE_URL}/subkriteria/${id}`,{method:"DELETE",headers:{Authorization:`Bearer ${token}`}}); openSubKriteria(kId, document.getElementById("pageTitle").innerText.split(": ")[1] || ""); } catch(e) { showToast(e.message, "error"); } } };
+
+        return;
     }
 
     // ======================

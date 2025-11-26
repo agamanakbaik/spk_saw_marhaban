@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SPK SAW - Admin Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class'
@@ -200,13 +202,6 @@
                 </div>
 
                 <div class="my-2 border-t border-gray-200 dark:border-gray-700"></div>
-
-                <a href="#" onclick="loadContent('penjelasan-saw')"
-                    class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">
-                    <i
-                        class="bi bi-info-circle-fill text-xl mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
-                    <span class="menu-text font-medium">Penjelasan SAW</span>
-                </a>
 
                 <a href="#" onclick="loadContent('chatbot')"
                     class="p-3 flex items-center text-gray-700 dark:text-white hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-700 rounded-lg transition-colors group">

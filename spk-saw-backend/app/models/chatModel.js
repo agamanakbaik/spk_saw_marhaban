@@ -41,7 +41,10 @@ ChatModel.ask = async (userMessage) => {
         const chat = model.startChat({
             history: [], // history kosong, aman
             generationConfig: {
-                maxOutputTokens: 500,
+                maxOutputTokens: 2000, //agar jawaban bot panjang,  mencapai 2000 kata
+                
+                // Temperature: 0.7 (Kreatif tapi tetap fokus)
+                temperature: 0.7,
             },
         });
 
@@ -55,3 +58,4 @@ ChatModel.ask = async (userMessage) => {
 };
 
 module.exports = ChatModel;
+ 

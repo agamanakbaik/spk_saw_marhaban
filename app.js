@@ -170,7 +170,7 @@ window.loadContent = async (page) => {
     }
 
    // ======================
-    // DATA ALTERNATIF (Tombol Solid Style)
+    // DATA ALTERNATIF
     // ======================
     if (page === "alternatif") {
         let allAlternatifData = []; 
@@ -434,7 +434,7 @@ window.loadContent = async (page) => {
     }
     
     // ======================
-    // DATA KRITERIA (Full Code: Reset Font Medium)
+    // DATA KRITERIA 
     // ======================
     if (page === "kriteria") {
         let allKriteriaData = []; 
@@ -595,19 +595,31 @@ window.loadContent = async (page) => {
         }
 
         // ============================================
-        // FUNGSI LOGIKA SUB KRITERIA (DENGAN SEARCH)
+        // FUNGSI LOGIKA SUB KRITERIA (FIX: SORTING & JUDUL)
         // ============================================
 
         window.openSubKriteria = async function (id, namaKriteria) {
+            // 1. Simpan state kriteria saat ini
             window.currentKriteriaId = id;
+            if(namaKriteria) window.currentKriteriaNama = namaKriteria; // Simpan nama agar tidak hilang saat refresh tabel
+            
+            // 2. UI Setup
             mainToolbar.style.display = "none"; 
             tableContainer.innerHTML = `<div class="p-10 text-center"><span class="spinner-border text-blue-500"></span> Memuat sub kriteria...</div>`;
             
             try {
+                // 3. Fetch Data
                 const res = await fetch(`${API_BASE_URL}/subkriteria?kriteria_id=${id}`, { headers: { Authorization: `Bearer ${token}` } });
                 const data = await res.json();
-                let allSubData = (Array.isArray(data) ? data : data.data || []).sort((a,b) => a.id - b.id);
+                
+                // Simpan data di variabel lokal untuk Sorting & Searching tanpa reload
+                let allSubData = (Array.isArray(data) ? data : data.data || []);
+                
+                // Default Sort (Ascending by Nilai)
+                let isAscending = true;
+                allSubData.sort((a,b) => a.nilai - b.nilai);
 
+                // --- FUNGSI RENDER BARIS TABEL ---
                 const renderSubRows = (subData) => {
                     if (!subData.length) return `<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="bi bi-list-nested text-3xl mb-2"></i><br>Data tidak ditemukan.</td></tr>`;
                     
@@ -627,6 +639,7 @@ window.loadContent = async (page) => {
                     `).join("");
                 };
 
+                // --- RENDER HEADER & FRAME TABEL ---
                 const subHeader = `
                     <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center bg-blue-50/50 dark:bg-blue-900/10 gap-4">
                         <div class="flex items-center gap-4 w-full md:w-auto">
@@ -635,24 +648,19 @@ window.loadContent = async (page) => {
                             </button>
                             <div>
                                 <h3 class="text-lg font-bold text-gray-800 dark:text-white">Sub Kriteria</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Untuk: <b>${namaKriteria}</b></p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Untuk: <b>${window.currentKriteriaNama}</b></p>
                             </div>
                         </div>
                         
                         <div class="flex flex-col md:flex-row w-full md:w-auto items-center gap-2">
                             <div class="relative w-full md:w-48">
-                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                                    <i class="bi bi-search text-xs"></i>
-                                </span>
-                                <input type="text" id="searchSubKrit" placeholder="Cari sub..." 
-                                    class="pl-8 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="bi bi-search text-xs"></i></span>
+                                <input type="text" id="searchSubKrit" placeholder="Cari sub..." class="pl-8 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
-
                             <div class="flex gap-2">
                                 <button id="btnResetSub" class="px-3 py-2 text-sm font-medium text-red-500 bg-white border border-red-300 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-400 transition flex items-center shadow-sm dark:bg-gray-800 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20">
                                     <i class="bi bi-trash3 mr-1"></i> Reset
                                 </button>
-
                                 <button onclick='showSubKritModal({ kriteria_id: ${id} })' class="px-3 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition flex items-center">
                                     <i class="bi bi-plus-lg mr-1"></i> Tambah
                                 </button>
@@ -668,7 +676,12 @@ window.loadContent = async (page) => {
                             <tr>
                                 <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">No</th>
                                 <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nama Sub</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nilai</th>
+                                
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase cursor-pointer hover:text-blue-600 select-none group" id="sortNilaiHeader">
+                                    Nilai 
+                                    <i id="sortIcon" class="bi bi-sort-numeric-down ml-1 text-gray-400 group-hover:text-blue-600"></i>
+                                </th>
+
                                 <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Ket</th>
                                 <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Aksi</th>
                             </tr>
@@ -677,26 +690,53 @@ window.loadContent = async (page) => {
                     </table>
                 `;
 
+                // Render Awal
                 tableContainer.innerHTML = renderTable(renderSubRows(allSubData));
 
-                const searchSubInput = document.getElementById('searchSubKrit');
-                const tbody = document.getElementById('subTableBody');
+                // --- EVENT LISTENERS ---
+
+                // 1. LOGIC SORTING (TANPA RELOAD)
+                const sortHeader = document.getElementById('sortNilaiHeader');
+                const sortIcon = document.getElementById('sortIcon');
                 
-                searchSubInput.addEventListener('input', (e) => {
+                sortHeader.addEventListener('click', () => {
+                    // Toggle status
+                    isAscending = !isAscending;
+
+                    // Ubah Ikon
+                    if (isAscending) {
+                        sortIcon.className = "bi bi-sort-numeric-down ml-1 text-blue-600";
+                    } else {
+                        sortIcon.className = "bi bi-sort-numeric-up-alt ml-1 text-blue-600";
+                    }
+
+                    // Sorting Array Lokal
+                    allSubData.sort((a, b) => {
+                        return isAscending ? a.nilai - b.nilai : b.nilai - a.nilai;
+                    });
+
+                    // Update Hanya Tbody (Tanpa Fetch Ulang)
+                    document.getElementById('subTableBody').innerHTML = renderSubRows(allSubData);
+                });
+
+                // 2. LOGIC SEARCH (Filter Array Lokal)
+                document.getElementById('searchSubKrit').addEventListener('input', (e) => {
                     const keyword = e.target.value.toLowerCase();
                     const filtered = allSubData.filter(s => 
                         s.nama.toLowerCase().includes(keyword) || 
                         (s.keterangan && s.keterangan.toLowerCase().includes(keyword))
                     );
-                    tbody.innerHTML = renderSubRows(filtered);
+                    document.getElementById('subTableBody').innerHTML = renderSubRows(filtered);
                 });
 
+                // 3. LOGIC RESET
                 const btnResetSub = document.getElementById('btnResetSub');
                 if(btnResetSub) {
                     btnResetSub.addEventListener('click', async () => {
                         if (allSubData.length === 0) return showToast("Data kosong.", "error");
-                        if (!await showConfirm("Reset Sub Kriteria?", `Hapus semua sub kriteria untuk "${namaKriteria}"?`)) return;
+                        if (!await showConfirm("Reset Sub Kriteria?", `Hapus semua sub kriteria untuk "${window.currentKriteriaNama}"?`)) return;
 
+                        // Loading state tombol
                         const originalHtml = btnResetSub.innerHTML;
                         btnResetSub.disabled = true;
                         btnResetSub.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
@@ -707,10 +747,11 @@ window.loadContent = async (page) => {
                             );
                             await Promise.all(deletePromises);
                             showToast("Sub kriteria berhasil di-reset!", "success");
-                            openSubKriteria(id, namaKriteria);
+                            // Refresh total (karena data habis)
+                            openSubKriteria(id, window.currentKriteriaNama);
                         } catch (err) {
                             showToast("Gagal menghapus sebagian data.", "error");
-                            openSubKriteria(id, namaKriteria);
+                            openSubKriteria(id, window.currentKriteriaNama);
                         }
                     });
                 }
@@ -785,275 +826,505 @@ window.loadContent = async (page) => {
     }
 
     // ======================
-    // PENILAIAN
+    // PENILAIAN ALTERNATIF (Custom UI: Tampil Nama Saja saat Dipilih)
     // ======================
     if (page === "penilaian") {
-      container.innerHTML = `<h2 class="text-2xl font-bold mb-4 dark:text-white">Penilaian Alternatif</h2><div id="penilaian-loader" class="text-gray-600 dark:text-gray-400">Memuat data...</div>`;
-      const loader = document.getElementById("penilaian-loader");
-      try {
-        loader.innerText = "Memuat alternatif...";
-        const [altRes, kritRes, penRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/penilaian`, { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
-        const altJson = await altRes.json();
-        const kritJson = await kritRes.json();
-        const penJson = await penRes.json();
-        const alternatifs = altJson.data || altJson || [];
-        const kriterias = kritJson.data || kritJson || [];
-        const penilaianData = penJson.data || penJson || [];
-        if (kriterias.length === 0 || alternatifs.length === 0) {
-          container.innerHTML = `<p class="text-red-500">Data Alternatif atau Kriteria masih kosong. Harap isi data tersebut terlebih dahulu.</p>`;
-          return;
-        }
-        loader.innerText = "Memuat data sub-kriteria...";
-        const subKriteriaMap = new Map();
-        for (const k of kriterias) {
-          const subRes = await fetch(
-            `${API_BASE_URL}/subkriteria?kriteria_id=${k.id}`, { headers: { Authorization: `Bearer ${token}` } }
-          );
-          const subJson = await subRes.json();
-          const subData = subJson.data || subJson || [];
-          subKriteriaMap.set(k.id, subData);
-        }
-        const penilaianMap = new Map();
-        penilaianData.forEach((p) => {
-          if (p.nilai !== undefined && p.alternatif_id && p.kriteria_id) {
-            penilaianMap.set(`${p.alternatif_id}-${p.kriteria_id}`, p.nilai);
-          }
-        });
-        loader.innerText = "Merender tabel...";
-        const tableHeaders = kriterias.map((k) => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">${k.nama}</th>`).join("");
-        const tableRows = alternatifs
-          .map((a, index) => {
-            const kriteriaCells = kriterias
-              .map((k) => {
-                const subKriterias = subKriteriaMap.get(k.id) || [];
-                const currentValue = penilaianMap.get(`${a.id}-${k.id}`);
-                const options = subKriterias.map((s) => `<option value="${s.nilai}" ${s.nilai == currentValue ? "selected" : ""}>${s.nama}</option>`).join("");
-                return `
-                        <td class="px-4 py-2 border-b dark:border-gray-700">
-                            <select 
-                                class="min-w-[160px] p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                data-alt-id="${a.id}" 
-                                data-krit-id="${k.id}"
-                            >
-                                <option value="">- Pilih -</option>
-                                ${options}
-                            </select>
+        
+        // 1. Render Skeleton
+        container.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden min-h-[400px]">
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Penilaian Alternatif</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Lengkapi nilai untuk setiap alternatif berdasarkan kriteria.</p>
+                </div>
+                <div id="penilaian-loader" class="flex flex-col items-center justify-center h-64 text-indigo-500">
+                    <span class="spinner-border w-8 h-8 mb-3"></span>
+                    <span class="text-gray-500 dark:text-gray-400 text-sm font-medium">Sedang memuat data...</span>
+                </div>
+                <div id="penilaian-content" class="hidden"></div>
+            </div>
+        `;
+        
+        const loader = document.getElementById("penilaian-loader");
+        const contentDiv = document.getElementById("penilaian-content");
+        
+        try {
+            // 2. Fetch Data
+            const [altRes, kritRes, penRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } }),
+                fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } }),
+                fetch(`${API_BASE_URL}/penilaian`, { headers: { Authorization: `Bearer ${token}` } }),
+            ]);
+
+            const altJson = await altRes.json();
+            const kritJson = await kritRes.json();
+            const penJson = await penRes.json();
+
+            const alternatifs = (altJson.data || altJson || []).sort((a, b) => a.id - b.id);
+            const kriterias = (kritJson.data || kritJson || []).sort((a, b) => a.id - b.id);
+            const penilaianData = penJson.data || penJson || [];
+
+            if (kriterias.length === 0 || alternatifs.length === 0) {
+                loader.classList.add('hidden');
+                contentDiv.classList.remove('hidden');
+                contentDiv.innerHTML = `<div class="p-6 text-center text-red-500">Data belum lengkap.</div>`;
+                return;
+            }
+
+            // 3. Siapkan Sub Kriteria
+            const subResList = await Promise.all(
+                kriterias.map(k => fetch(`${API_BASE_URL}/subkriteria?kriteria_id=${k.id}`, { headers: { Authorization: `Bearer ${token}` } }))
+            );
+            
+            const subKriteriaMap = new Map();
+            for (let i = 0; i < kriterias.length; i++) {
+                const subJson = await subResList[i].json();
+                // Urutkan: Nilai Terbesar di Atas (Opsional)
+                const subData = (subJson.data || subJson || []).sort((a, b) => b.nilai - a.nilai);
+                subKriteriaMap.set(kriterias[i].id, subData);
+            }
+
+            // 4. Mapping Nilai
+            const penilaianMap = new Map();
+            penilaianData.forEach((p) => {
+                if (p.nilai !== undefined) penilaianMap.set(`${p.alternatif_id}-${p.kriteria_id}`, p.nilai);
+            });
+
+            // 5. Build Tabel
+            const tableHeaders = kriterias.map((k) => 
+                `<th class="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[220px] bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">${k.nama}</th>`
+            ).join("");
+            
+            const tableRows = alternatifs.map((a, index) => {
+                const kriteriaCells = kriterias.map((k) => {
+                    const subKriterias = subKriteriaMap.get(k.id) || [];
+                    const currentValue = penilaianMap.get(`${a.id}-${k.id}`);
+                    
+                    // Cari teks pendek untuk nilai yang tersimpan saat ini
+                    let currentShortLabel = "- Pilih -";
+                    
+                    const options = subKriterias.map((s) => {
+                        const isSelected = s.nilai == currentValue ? "selected" : "";
+                        
+                        // Cek jika ini nilai yang terpilih, simpan namanya buat ditampilkan di overlay
+                        if (s.nilai == currentValue) currentShortLabel = s.nama;
+
+                        // Option Tetap Menampilkan Nilai Lengkap agar user tidak bingung saat memilih
+                        return `<option value="${s.nilai}" data-short="${s.nama}" ${isSelected}>${s.nama} (Nilai: ${s.nilai})</option>`;
+                    }).join("");
+
+                    // ID Unik untuk sinkronisasi
+                    const uniqueId = `select-${a.id}-${k.id}`;
+                    const labelId = `label-${a.id}-${k.id}`;
+                    const wrapperId = `wrapper-${a.id}-${k.id}`;
+                    
+                    // --- TRIK UTAMA DISINI ---
+                    // 1. div relative: container pembungkus
+                    // 2. div #label-...: Tampilan palsu (z-index rendah), menampilkan Nama Pendek
+                    // 3. select #select-...: Transparan (opacity-0), ada di atas (z-index tinggi), menampilkan Opsi Lengkap
+                    return `
+                        <td class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 align-middle">
+                            <div class="relative w-full min-w-[180px]" id="${wrapperId}">
+                                
+                                <div class="custom-select-display flex items-center justify-between w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white pointer-events-none">
+                                    <span id="${labelId}" class="truncate mr-2">${currentShortLabel}</span>
+                                    <i class="bi bi-chevron-down text-gray-400 text-xs"></i>
+                                </div>
+
+                                <select 
+                                    id="${uniqueId}"
+                                    class="input-nilai absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                    data-alt-id="${a.id}" 
+                                    data-krit-id="${k.id}"
+                                    data-label-target="${labelId}"
+                                    data-wrapper-target="${wrapperId}"
+                                    required
+                                    onchange="syncSelectDisplay(this)"
+                                >
+                                    <option value="" data-short="- Pilih -">- Pilih -</option>
+                                    ${options}
+                                </select>
+
+                            </div>
                         </td>
-                        `;
-              })
-              .join("");
-            return `
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white text-center">${index + 1}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200">${a.nama_periode} (${a.deskripsi || "Tidak ada deskripsi"})</td>
+                    `;
+                }).join("");
+
+                return `
+                    <tr class="hover:bg-indigo-50/30 dark:hover:bg-gray-700/50 transition duration-150 group">
+                        <td class="px-6 py-4 text-center text-sm text-gray-500 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">${index + 1}</td>
+                        <td class="px-6 py-4 whitespace-nowrap border-b border-gray-100 dark:border-gray-700 sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-indigo-50/30 dark:group-hover:bg-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-800 dark:text-white">${a.nama_periode}</span>
+                                <span class="text-xs text-gray-500 truncate max-w-[150px]">${a.deskripsi || '-'}</span>
+                            </div>
+                        </td>
                         ${kriteriaCells}
                     </tr>
-                    `;
-          })
-          .join("");
-        container.innerHTML = `
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Penilaian Alternatif</h2>
-                    <nav class="text-sm" aria-label="Breadcrumb">
-                      <ol class="list-none p-0 inline-flex">
-                        <li class="flex items-center">
-                  
-                      </ol>
-                    </nav>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-                    <form id="penilaian-form">
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full">
-                                <thead class="bg-gray-50 dark:bg-gray-700">
-                                    <tr>
-                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama Alternatif</th>
-                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" colspan="${kriterias.length}">
-                                            Nilai Kriteria
-                                        </th>
-                                    </tr>
-                                    <tr>
-                                        <th class="px-6 py-3"></th>
-                                        <th class="px-6 py-3"></th>
-                                        ${tableHeaders}
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    ${tableRows}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700">
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150">
-                                Simpan Penilaian
-                            </button>
-                        </div>
-                    </form>
-                </div>
                 `;
-        document.getElementById("penilaian-form").addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const btn = e.target.querySelector('button[type="submit"]');
-          btn.disabled = true;
-          btn.innerText = "Menyimpan...";
-          try {
-            const selects = e.target.querySelectorAll("select");
-            const payload = [];
-            selects.forEach((select) => {
-              const nilai = select.value;
-              if (nilai) {
-                payload.push({
-                  alternatif_id: parseInt(select.dataset.altId),
-                  kriteria_id: parseInt(select.dataset.kritId),
-                  nilai: parseFloat(nilai),
+            }).join("");
+
+            contentDiv.innerHTML = `
+                <form id="penilaian-form" class="flex flex-col h-full">
+                    <div class="overflow-auto max-h-[65vh] relative">
+                        <table class="min-w-full border-collapse">
+                            <thead class="sticky top-0 z-20 shadow-sm">
+                                <tr>
+                                    <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase w-16 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">No</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase min-w-[200px] sticky left-0 z-30 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Alternatif</th>
+                                    ${tableHeaders}
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-end items-center z-30">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-8 rounded-lg shadow-lg transition duration-200 flex justify-center items-center gap-2 transform active:scale-95">
+                            <i class="bi bi-floppy2-fill"></i> Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            `;
+
+            // === FUNGSI SINKRONISASI TAMPILAN ===
+            // Dipanggil saat user memilih opsi baru
+            window.syncSelectDisplay = (selectElem) => {
+                const labelId = selectElem.getAttribute('data-label-target');
+                const wrapperId = selectElem.getAttribute('data-wrapper-target');
+                const labelElem = document.getElementById(labelId);
+                const wrapperElem = document.getElementById(wrapperId);
+                const displayDiv = wrapperElem.querySelector('.custom-select-display');
+
+                // Ambil option yang dipilih
+                const selectedOption = selectElem.options[selectElem.selectedIndex];
+                const shortText = selectedOption.getAttribute('data-short') || "- Pilih -";
+
+                // Update teks overlay
+                if(labelElem) labelElem.innerText = shortText;
+
+                // Hapus border merah jika sudah dipilih
+                if(selectElem.value !== "") {
+                    displayDiv.classList.remove('border-red-500', 'bg-red-50');
+                    displayDiv.classList.add('border-gray-300', 'bg-white');
+                }
+            };
+
+            loader.classList.add('hidden');
+            contentDiv.classList.remove('hidden');
+
+            // === EVENT LISTENER SUBMIT ===
+            document.getElementById("penilaian-form").addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const selects = e.target.querySelectorAll(".input-nilai");
+                
+                let isValid = true;
+                let emptyCount = 0;
+                const payload = [];
+
+                // Loop untuk validasi dan ambil data
+                selects.forEach((select) => {
+                    const nilai = select.value;
+                    const wrapperId = select.getAttribute('data-wrapper-target');
+                    const wrapperElem = document.getElementById(wrapperId);
+                    const displayDiv = wrapperElem.querySelector('.custom-select-display');
+
+                    // Reset Style Dulu
+                    displayDiv.classList.remove('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200');
+                    displayDiv.classList.add('border-gray-300', 'bg-white');
+
+                    if (!nilai || nilai === "") {
+                        isValid = false;
+                        emptyCount++;
+                        // Beri border merah pada OVERLAY (karena select asli invisible)
+                        displayDiv.classList.remove('border-gray-300', 'bg-white');
+                        displayDiv.classList.add('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200');
+                    } else {
+                        payload.push({
+                            alternatif_id: parseInt(select.dataset.altId),
+                            kriteria_id: parseInt(select.dataset.kritId),
+                            nilai: parseFloat(nilai),
+                        });
+                    }
                 });
-              }
+
+                if (!isValid) {
+                    showToast(`Gagal! Ada ${emptyCount} kolom yang belum diisi.`, "error");
+                    // Scroll ke error pertama
+                    const firstError = document.querySelector('.custom-select-display.border-red-500');
+                    if(firstError) firstError.scrollIntoView({behavior: "smooth", block: "center"});
+                    return;
+                }
+
+                btn.disabled = true;
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Menyimpan...`;
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/penilaian/save-all`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                        body: JSON.stringify(payload),
+                    });
+                    const result = await res.json();
+                    if (!res.ok) throw new Error(result.message);
+                    
+                    showToast("Penilaian berhasil disimpan!", "success");
+                } catch (err) {
+                    showToast(`Error: ${err.message}`, "error");
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
             });
-            if (payload.length === 0) {
-              showToast("Tidak ada data untuk disimpan.", "error");
-              btn.disabled = false;
-              btn.innerText = "Simpan";
-              return;
-            }
-            const res = await fetch(`${API_BASE_URL}/penilaian/save-all`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-              body: JSON.stringify(payload),
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.message);
-            showToast(result.message || "Semua data berhasil disimpan!");
-          } catch (err) {
-            console.error("Gagal menyimpan batch:", err);
-            showToast(`Terjadi kesalahan: ${err.message}`, "error");
-          } finally {
-            btn.disabled = false;
-            btn.innerText = "Simpan Penilaian";
-          }
-        });
-      } catch (err) {
-        console.error("Error loading penilaian page:", err);
-        container.innerHTML = `<p class="text-red-500">Gagal memuat halaman penilaian. ${err.message}</p>`;
-      }
-      return;
+
+        } catch (err) {
+            console.error("Error:", err);
+            loader.classList.add('hidden');
+            contentDiv.classList.remove('hidden');
+            contentDiv.innerHTML = `<div class="p-10 text-center text-red-500">Gagal memuat halaman.</div>`;
+        }
+        return;
     }
 
     // ======================
-    // PERHITUNGAN SAW
+    // PERHITUNGAN SAW (Lengkap: Tabs, Cetak Rapi, Grafik)
     // ======================
     if (page === "perhitungan") {
-      container.innerHTML = `
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Hasil Perhitungan</h2>
-            </div>
-            <button id="run-saw-btn" class="mb-6 w-full bg-indigo-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl font-semibold text-lg transition-all duration-200 cetak-sembunyi">
-                Mulai Perhitungan SAW
-            </button>
-            <div id="results-container" class="space-y-8">
-                <p class="text-gray-600 dark:text-gray-400 text-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                    Klik tombol di atas untuk memulai proses perhitungan.
-                </p>
+        
+        container.innerHTML = `
+            <style>
+                @media print {
+                    body * { visibility: hidden; }
+                    #content-container, #content-container * { visibility: visible; }
+                    #sidebar-wrapper, header, .no-print, button, nav, .tab-btn-container, #state-initial, #state-loading { display: none !important; }
+
+                    @page { size: A4 landscape; margin: 1cm; }
+                    body { background: white !important; color: black !important; font-family: 'Times New Roman', serif; font-size: 10pt; }
+                    #content-container { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+
+                    #print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 3px double #000; padding-bottom: 10px; }
+                    #print-header h1 { font-size: 14pt; font-weight: bold; margin: 0; text-transform: uppercase; }
+                    #print-header h2 { font-size: 12pt; font-weight: bold; margin: 5px 0; }
+                    #print-header p { font-size: 10pt; font-style: italic; margin: 0; }
+
+                    h3.print-title { font-size: 11pt; font-weight: bold; margin-top: 25px; margin-bottom: 10px; text-transform: uppercase; color: #000 !important; page-break-after: avoid; }
+
+                    table { width: 100% !important; border-collapse: collapse !important; border: 1px solid #000 !important; margin-bottom: 15px; page-break-inside: auto; }
+                    tr { page-break-inside: avoid; page-break-after: auto; }
+                    th, td { border: 1px solid #000 !important; padding: 5px 8px !important; color: #000 !important; font-size: 10pt; }
+                    thead { display: table-header-group; }
+                    thead th { background-color: #f2f2f2 !important; font-weight: bold; text-align: center; }
+                    td { text-align: center; }
+                    td:nth-child(2) { text-align: left !important; padding-left: 10px !important; }
+
+                    .tab-pane { display: block !important; opacity: 1 !important; page-break-inside: auto !important; margin-bottom: 10px; }
+
+                    #chart-section-print { display: block !important; page-break-inside: avoid; page-break-before: auto; margin-top: 20px; border: 1px solid #000; padding: 10px; height: 350px !important; width: 100% !important; }
+                    body.hide-chart-on-print #chart-section-print { display: none !important; }
+                    .bg-white, .dark\\:bg-gray-800 { box-shadow: none !important; border: none !important; background: none !important; }
+                    .rank-badge { border: none !important; font-weight: normal !important; }
+                }
+            </style>
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden min-h-[500px] flex flex-col">
+                
+                <div id="print-header" class="hidden">
+                    <h1>Laporan Hasil Keputusan (SPK)</h1>
+                    <h2>Metode Simple Additive Weighting (SAW)</h2>
+                    <p>Dicetak otomatis pada: ${new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}</p>
+                </div>
+
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-col md:flex-row justify-between items-center gap-4 no-print">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Proses Perhitungan SAW</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Analisis data alternatif berdasarkan kriteria.</p>
+                    </div>
+                    <button id="run-saw-btn" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-md transition flex items-center gap-2">
+                        <i class="bi bi-cpu-fill"></i> Mulai Hitung
+                    </button>
+                </div>
+
+                <div class="tab-btn-container border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 no-print">
+                    <nav class="-mb-px flex space-x-6 overflow-x-auto" id="calcTabs">
+                        <button onclick="switchTab('tab-matriks')" class="tab-btn border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 font-medium py-4 px-1 text-sm whitespace-nowrap transition" data-target="tab-matriks">1. Matriks Awal (X)</button>
+                        <button onclick="switchTab('tab-normalisasi')" class="tab-btn border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 font-medium py-4 px-1 text-sm whitespace-nowrap transition" data-target="tab-normalisasi">2. Normalisasi (R)</button>
+                        <button onclick="switchTab('tab-bobot')" class="tab-btn border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 font-medium py-4 px-1 text-sm whitespace-nowrap transition" data-target="tab-bobot">3. Terbobot (W)</button>
+                        <button onclick="switchTab('tab-ranking')" class="tab-btn active-tab border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold py-4 px-1 text-sm whitespace-nowrap transition" data-target="tab-ranking"><i class="bi bi-trophy-fill mr-1"></i> Hasil Perankingan</button>
+                    </nav>
+                </div>
+
+                <div id="calcContent" class="p-6 flex-1 bg-gray-50/30 dark:bg-gray-900/20 relative">
+                    <div id="state-initial" class="flex flex-col items-center justify-center h-64 text-center text-gray-400 no-print">
+                        <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-full mb-3"><i class="bi bi-bar-chart-steps text-3xl"></i></div>
+                        <p class="font-medium">Data belum diproses.</p>
+                    </div>
+                    <div id="state-loading" class="hidden flex flex-col items-center justify-center h-64 text-center text-indigo-500 no-print">
+                        <span class="spinner-border w-8 h-8 mb-3"></span>
+                        <p class="font-bold animate-pulse">Sedang melakukan kalkulasi...</p>
+                    </div>
+                    <div id="state-result" class="hidden space-y-8">
+                        
+                        <div id="tab-matriks" class="tab-pane hidden">
+                            <h3 class="print-title hidden print:block">1. Matriks Keputusan (X)</h3>
+                            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <div class="p-4 border-b bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 text-sm font-medium no-print"><i class="bi bi-table mr-2"></i> Matriks Keputusan</div>
+                                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id="table-matriks"></table></div>
+                            </div>
+                        </div>
+
+                        <div id="tab-normalisasi" class="tab-pane hidden">
+                            <h3 class="print-title hidden print:block">2. Matriks Normalisasi (R)</h3>
+                            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <div class="p-4 border-b bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 text-sm font-medium no-print"><i class="bi bi-calculator mr-2"></i> Normalisasi</div>
+                                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id="table-norm"></table></div>
+                            </div>
+                        </div>
+
+                        <div id="tab-bobot" class="tab-pane hidden">
+                            <h3 class="print-title hidden print:block">3. Matriks Terbobot (W*R)</h3>
+                            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <div class="p-4 border-b bg-purple-50 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300 text-sm font-medium no-print"><i class="bi bi-layers-half mr-2"></i> Terbobot</div>
+                                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id="table-weight"></table></div>
+                            </div>
+                        </div>
+
+                        <div id="tab-ranking" class="tab-pane block">
+                            <h3 class="print-title hidden print:block">Tabel Peringkat Akhir</h3>
+                            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
+                                <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 font-bold text-gray-700 dark:text-gray-300 text-sm no-print flex justify-between items-center">
+                                    <span>Tabel Peringkat</span>
+                                    <i class="bi bi-trophy text-yellow-500"></i>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id="table-ranking"></table>
+                                </div>
+                            </div>
+                            <div id="chart-section-print" class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                                <h3 class="print-title hidden print:block text-center mb-4">Grafik Nilai Preferensi</h3>
+                                <h4 class="font-bold text-lg mb-4 text-gray-800 dark:text-white flex items-center gap-2 no-print">
+                                    <i class="bi bi-graph-up-arrow text-indigo-600"></i> Grafik Nilai Terbobot
+                                </h4>
+                                <div style="height: 350px; position: relative; width: 100%;">
+                                    <canvas id="miniChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="mt-6 flex justify-end gap-3 no-print">
+                                <button onclick="printReport(false)" class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 rounded-lg font-semibold transition flex items-center gap-2"><i class="bi bi-table"></i> Cetak Tabel Saja</button>
+                                <button onclick="printReport(true)" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-md transition flex items-center gap-2"><i class="bi bi-bar-chart-line-fill"></i> Cetak Lengkap (+Grafik)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
-      document.getElementById("run-saw-btn").addEventListener("click", async () => {
-        const resultsContainer = document.getElementById("results-container");
-        const btn = document.getElementById("run-saw-btn");
-        btn.disabled = true;
-        btn.innerText = "Menghitung...";
-        resultsContainer.innerHTML = `
-                <div class="p-8 text-center text-indigo-600 dark:text-indigo-400 text-xl font-semibold bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-                    Sedang memproses perhitungan...
-                </div>`;
-        try {
-          const res = await fetch(`${API_BASE_URL}/perhitungan/hitung`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.message || "Gagal mendapatkan hasil.");
-          const kriteriaData = data.kriteriaData || [];
-          const initialValues = data.initialValues || [];
-          const normalizedValues = data.normalizedValues || [];
-          const weightedNormalizedValues = data.weightedNormalizedValues || [];
-          const ranking = data.ranking || [];
-          const createTableHTML = (title, headers, rowsData, dataExtractor, rowClassCallback = null) => {
-            const headerHTML = headers.map(h => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">${h}</th>`).join('');
-            const bodyHTML = rowsData.map((row, index) => {
-              const rowClass = rowClassCallback ? rowClassCallback(row) : 'hover:bg-gray-50 dark:hover:bg-gray-700';
-              const cellsHTML = headers.map(headerKey => `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${dataExtractor(row, headerKey, index)}</td>`).join('');
-              return `<tr class="${rowClass}">${cellsHTML}</tr>`;
+
+        window.printReport = (withChart) => {
+            const body = document.body;
+            if (withChart) { body.classList.remove('hide-chart-on-print'); } else { body.classList.add('hide-chart-on-print'); }
+            if(myWeightedChart) myWeightedChart.resize();
+            setTimeout(() => window.print(), 300);
+        };
+
+        window.switchTab = (targetId) => {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                const isActive = btn.dataset.target === targetId;
+                btn.classList.toggle('border-indigo-500', isActive);
+                btn.classList.toggle('text-indigo-600', isActive);
+                btn.classList.toggle('dark:text-indigo-400', isActive);
+                btn.classList.toggle('border-transparent', !isActive);
+                btn.classList.toggle('text-gray-500', !isActive);
+            });
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.add('hidden'));
+            document.getElementById(targetId).classList.remove('hidden');
+        };
+
+        const btnRun = document.getElementById("run-saw-btn");
+        btnRun.addEventListener("click", async () => {
+            document.getElementById("state-initial").classList.add("hidden");
+            document.getElementById("state-result").classList.add("hidden");
+            document.getElementById("state-loading").classList.remove("hidden");
+            btnRun.disabled = true;
+            btnRun.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Memproses...`;
+            try {
+                const res = await fetch(`${API_BASE_URL}/perhitungan/hitung`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message);
+                renderAllTables(data);
+                document.getElementById("state-loading").classList.add("hidden");
+                document.getElementById("state-result").classList.remove("hidden");
+                switchTab('tab-ranking'); 
+                showToast("Perhitungan Selesai!", "success");
+            } catch (err) {
+                showToast(err.message, "error");
+                document.getElementById("state-loading").classList.add("hidden");
+                document.getElementById("state-initial").classList.remove("hidden");
+            } finally {
+                btnRun.disabled = false;
+                btnRun.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Hitung Ulang`;
+            }
+        });
+
+        function renderAllTables(data) {
+            const { kriteriaData, initialValues, normalizedValues, weightedNormalizedValues, ranking } = data;
+            const headers = kriteriaData.map(k => `<th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50 dark:bg-gray-700 dark:text-gray-300">${k.nama} (${k.kode})</th>`).join('');
+            const commonHeader = `<thead class="bg-gray-50 dark:bg-gray-700"><tr><th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase w-10">No</th><th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase w-48">Alternatif</th>${headers}</tr></thead>`;
+            
+            const createRows = (dataset, isRanking = false) => dataset.map((row, i) => {
+                let cells = kriteriaData.map(k => `<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 font-mono">${(row[k.kode]||0).toFixed(3)}</td>`).join('');
+                return `<tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50"><td class="px-4 py-3 text-center text-sm text-gray-500">${isRanking ? row.rank : i+1}</td><td class="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white">${row.alternatif_nama}</td>${cells}</tr>`;
             }).join('');
-            return `
-                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-                      <h3 class="text-xl font-bold text-gray-800 dark:text-white p-5 border-b border-gray-200 dark:border-gray-700">${title}</h3>
-                      <div class="overflow-x-auto">
-                          <table class="min-w-full">
-                              <thead class="bg-gray-50 dark:bg-gray-700"><tr>${headerHTML}</tr></thead>
-                              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${bodyHTML}</tbody>
-                          </table>
-                      </div>
-                  </div>`;
-          };
-          const kriteriaHeaders = ["No", "Nama Alternatif", ...kriteriaData.map(k => `${k.nama} (${k.kode})`)];
-          const kriteriaHeadersWithBobot = ['No', 'Nama Alternatif', ...kriteriaData.map(k => `${k.nama} (${k.kode}) (Bobot: ${k.bobot_normalisasi.toFixed(2)})`)];
-          const initialExtractor = (row, headerKey, index) => {
-            if (headerKey === "No") return index + 1;
-            if (headerKey === "Nama Alternatif") return `<span class="font-medium text-gray-900 dark:text-white">${row.alternatif_nama}</span>`;
-            const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
-            return row[kriteriaCode]?.toFixed(3) ?? "N/A";
-          };
-          const normalizedExtractor = (row, headerKey, index) => {
-            if (headerKey === "No") return index + 1;
-            if (headerKey === "Nama Alternatif") return `<span class="font-medium text-gray-900 dark:text-white">${row.alternatif_nama}</span>`;
-            const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
-            return row[kriteriaCode]?.toFixed(3) ?? "N/A";
-          };
-          const weightedExtractor = (row, headerKey, index) => {
-            if (headerKey === "No") return index + 1;
-            if (headerKey === "Nama Alternatif") return `<span class="font-medium text-gray-900 dark:text-white">${row.alternatif_nama}</span>`;
-            const kriteriaCode = headerKey.substring(headerKey.indexOf("(") + 1, headerKey.indexOf(")"));
-            return row[kriteriaCode]?.toFixed(3) ?? "N/A";
-          };
-          const rankingHeaders = ["Ranking", "Nama Alternatif", "Skor Akhir (V)"];
-          const rankingExtractor = (row, headerKey) => {
-            if (headerKey === "Ranking") return `<span class="font-bold text-lg ${row.rank === 1 ? 'text-green-600' : 'text-gray-900 dark:text-white'}">${row.rank}</span>`;
-            if (headerKey === "Nama Alternatif") return `<span class="font-medium text-gray-900 dark:text-white">${row.alternatif_nama}</span>`;
-            if (headerKey === "Skor Akhir (V)") return `<span class="font-semibold text-gray-900 dark:text-white">${row.nilai.toFixed(4)}</span>`;
-            return "N/A";
-          };
-          const rankingRowStyler = (row) => (row.rank === 1 ? 'bg-green-50 dark:bg-green-900' : 'hover:bg-gray-50 dark:hover:bg-gray-700');
-          const initialTableHTML = createTableHTML("Nilai Awal (X)", kriteriaHeaders, initialValues, initialExtractor);
-          const normalizedTableHTML = createTableHTML("Nilai Normalisasi (R)", kriteriaHeadersWithBobot, normalizedValues, normalizedExtractor);
-          const weightedTableHTML = createTableHTML("Nilai Normalisasi Terbobot (W * R)", kriteriaHeaders, weightedNormalizedValues, weightedExtractor);
-          const rankingTableHTML = createTableHTML("Hasil Peringkat (V)", rankingHeaders, ranking, rankingExtractor, rankingRowStyler);
-          const printButtonHTML = `
-                <div class="mt-6 p-4 bg-green-600 rounded-lg shadow-lg text-center cursor-pointer hover:bg-green-700 transition-all duration-200 cetak-sembunyi" onclick="window.print()">
-                    <button class="text-white font-bold text-lg"><i class="bi bi-printer-fill mr-2"></i>Cetak Hasil</button>
-                </div>`;
-          const graphHTML = `
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg mt-8 cetak-sembunyi">
-                     <h3 class="text-xl font-bold text-gray-800 dark:text-white p-5 border-b border-gray-200 dark:border-gray-700">Grafik Nilai Terbobot</h3>
-                     <div class="p-4" style="height: 400px;">
-                         <canvas id="weightedChart"></canvas>
-                     </div>
-                </div>`;
-          resultsContainer.innerHTML = initialTableHTML + normalizedTableHTML + weightedTableHTML + rankingTableHTML + printButtonHTML + graphHTML;
-          renderWeightedChart(kriteriaData, weightedNormalizedValues);
-        } catch (err) {
-          console.error("Gagal menghitung SAW:", err);
-          showToast(err.message, "error");
-          resultsContainer.innerHTML = `<p class="text-red-600 p-4 bg-red-100 rounded-lg shadow-md font-semibold">Error: ${err.message}</p>`;
-        } finally {
-          btn.disabled = false;
-          btn.innerText = "Mulai Perhitungan SAW";
+
+            document.getElementById('table-matriks').innerHTML = commonHeader + `<tbody>${createRows(initialValues)}</tbody>`;
+            document.getElementById('table-norm').innerHTML = commonHeader + `<tbody>${createRows(normalizedValues)}</tbody>`;
+            document.getElementById('table-weight').innerHTML = commonHeader + `<tbody>${createRows(weightedNormalizedValues)}</tbody>`;
+
+            const rankingRows = ranking.map(r => `
+                <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-green-50 dark:hover:bg-green-900/20 ${r.rank === 1 ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500' : ''}">
+                    <td class="px-6 py-4 text-center"><span class="rank-badge w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${r.rank <= 3 ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'}">${r.rank}</span></td>
+                    <td class="px-6 py-4 font-bold text-gray-800 dark:text-white">${r.alternatif_nama}</td>
+                    <td class="px-6 py-4 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400 text-lg">${r.nilai.toFixed(4)}</td>
+                </tr>
+            `).join('');
+            document.getElementById('table-ranking').innerHTML = `<thead class="bg-gray-50 dark:bg-gray-700"><tr><th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase w-20">Rank</th><th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Alternatif</th><th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Total Skor (V)</th></tr></thead><tbody>${rankingRows}</tbody>`;
+            renderMiniChart(data);
         }
-      });
-      return;
+
+        function renderMiniChart(fullData) {
+            const ctx = document.getElementById('miniChart');
+            if (myWeightedChart) myWeightedChart.destroy();
+            const { kriteriaData, weightedNormalizedValues } = fullData;
+            const labels = kriteriaData.map(k => k.nama);
+            const datasets = weightedNormalizedValues.map((alt, index) => {
+                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+                const color = colors[index % colors.length];
+                return {
+                    label: alt.alternatif_nama,
+                    data: kriteriaData.map(k => alt[k.kode]),
+                    borderColor: color,
+                    backgroundColor: color + '33',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 2
+                };
+            });
+            myWeightedChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', padding: 10, cornerRadius: 6 } },
+                    scales: { y: { beginAtZero: true, grid: { borderDash: [5, 5] } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+        return;
     }
 
     // ======================
@@ -1217,93 +1488,6 @@ window.loadContent = async (page) => {
     }
 
     // ======================
-    // PENJELASAN METODE  SAW
-    // ======================
-    else if (page === "penjelasan-saw") {
-      if (mainHeader) {
-        mainHeader.classList.add('shadow-md');
-      }
-
-      container.innerHTML = `
-        <div class="max-w-4xl mx-auto">
-            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6 text-center">
-                Penjelasan Metode SAW (Simple Additive Weighting)
-            </h2>
-
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700">
-                
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">Apa itu SAW?</h3>
-                <p class="text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
-                    Simple Additive Weighting (SAW) adalah salah satu metode Sistem Pendukung Keputusan (SPK)
-                    yang menghitung nilai akhir alternatif berdasarkan penjumlahan terbobot dari setiap kriteria.
-                    Metode ini banyak digunakan karena prosesnya sederhana, mudah dihitung, dan hasilnya jelas.
-                </p>
-
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">Tahapan Dalam Metode SAW</h3>
-
-                <ol class="list-decimal pl-6 text-gray-600 dark:text-gray-300 space-y-3 mb-6">
-                    <li>
-                        <span class="font-medium">Menentukan kriteria dan bobotnya.</span>
-                        Misalnya harga, kualitas, kecepatan, dan daya tahan, masing-masing memiliki bobot tertentu.
-                    </li>
-                    <li>
-                        <span class="font-medium">Menentukan jenis kriteria (Benefit atau Cost).</span>
-                        - Benefit: semakin besar nilai semakin baik  
-                        - Cost: semakin kecil nilai semakin baik
-                    </li>
-                    <li>
-                        <span class="font-medium">Membuat matriks keputusan.</span>
-                        Berisi nilai setiap alternatif pada tiap kriteria.
-                    </li>
-                    <li>
-                        <span class="font-medium">Normalisasi matriks keputusan.</span><br>
-                        Rumus:
-                        <div class="bg-gray-100 dark:bg-gray-700 text-center p-3 rounded-lg my-3 text-sm">
-                            Benefit: Rij = Xij / Max(Xij) <br>
-                            Cost: Rij = Min(Xij) / Xij
-                        </div>
-                    </li>
-                    <li>
-                        <span class="font-medium">Menghitung nilai akhir.</span><br>
-                        Rumus:
-                        <div class="bg-gray-100 dark:bg-gray-700 text-center p-3 rounded-lg my-3 text-sm">
-                            Vi = Σ (Wi × Rij)
-                        </div>
-                        Dimana Wi adalah bobot kriteria.
-                    </li>
-                    <li>
-                        <span class="font-medium">Menentukan peringkat alternatif.</span>
-                        Alternatif dengan nilai terbesar adalah yang paling direkomendasikan.
-                    </li>
-                </ol>
-
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">Contoh Singkat</h3>
-                <p class="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Misalkan sebuah perusahaan ingin memilih supplier terbaik berdasarkan 3 kriteria:
-                    Harga (Cost), Kualitas (Benefit), dan Kecepatan (Benefit).
-                </p>
-
-                <p class="text-gray-600 dark:text-gray-300 mt-4">
-                    Setelah dinormalisasi dan dikalikan bobot, nilai supplier dihitung.
-                    Supplier dengan nilai total tertinggi akan dipilih sebagai yang terbaik.
-                </p>
-
-                <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-600 dark:border-blue-400 rounded-lg">
-                    <p class="text-gray-800 dark:text-gray-200">
-                        <strong>Kesimpulan:</strong>  
-                        Metode SAW adalah teknik paling sederhana namun efektif untuk melakukan perangkingan pada
-                        Sistem Pendukung Keputusan. Cocok untuk berbagai bidang seperti bisnis, akademik, dan industri.
-                    </p>
-                </div>
-
-            </div>
-        </div>
-        `;
-
-      return;
-    }
-
-    // ======================
     // HALAMAN CHATBOT (Final: Tombol Kirim ala WhatsApp/Gemini)
     // ======================
     else if (page === "chatbot") {
@@ -1320,6 +1504,36 @@ window.loadContent = async (page) => {
         <style>
             .no-scrollbar::-webkit-scrollbar { display: none; }
             .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+            /* Styling List & Paragraf di dalam Chat */
+    .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.5em; }
+    .markdown-body ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 0.5em; }
+    .markdown-body p { margin-bottom: 0.5em; }
+    .markdown-body strong { font-weight: 700; color: inherit; }
+    
+    /* Styling Code Block (Agar tidak merah aneh) */
+    .markdown-body pre { 
+        background: #1f2937; 
+        color: #e5e7eb; 
+        padding: 10px; 
+        border-radius: 8px; 
+        overflow-x: auto; 
+        font-family: monospace;
+        margin: 10px 0;
+    }
+    .markdown-body code {
+        background: rgba(0,0,0,0.1);
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.9em;
+        color: #d946ef; /* Warna pink/ungu untuk inline code */
+    }
+    /* Di mode dark, code inline warnanya beda */
+    .dark .markdown-body code {
+        background: rgba(255,255,255,0.1);
+        color: #f0abfc;
+    }
         </style>
 
         <div class="flex flex-col h-[calc(100vh-85px)] w-full relative bg-transparent">
@@ -1969,33 +2183,53 @@ function addMessageToChat(message, sender, elementId = null) {
     const messagesContainer = document.getElementById('chat-messages');
     if (!messagesContainer) return;
 
-    // AMBIL CONFIG AVATAR SAAT INI
     const config = getChatConfig();
 
     const wrapper = document.createElement('div');
     wrapper.className = "w-full max-w-3xl mx-auto flex gap-4 mb-6 animate-fade-in"; 
     if (elementId) wrapper.id = elementId;
 
-    function simpleMarkdown(text) {
-        if (!text) return "";
-        let html = text
-            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-            .replace(/\n/g, "<br>")
-            .replace(/\*\*(.*?)\*\*/g, "<strong class='font-bold text-indigo-600 dark:text-indigo-400'>$1</strong>") 
-            .replace(/`([^`]+)`/g, "<code class='bg-gray-100 dark:bg-gray-800 px-1 rounded text-sm font-mono text-red-500'>$1</code>");
-        return html;
+    // --- PERBAIKAN UTAMA DI SINI ---
+    let contentHtml = '';
+
+    if (sender === 'user') {
+        // User tetap text biasa agar aman
+        contentHtml = `<p class="leading-relaxed whitespace-pre-wrap text-sm">${message}</p>`;
+    } else {
+        // Bot menggunakan Marked.js untuk merapikan format
+        if (message === '...') {
+            // Animasi Typing
+            contentHtml = `
+                <div class="flex space-x-1 h-6 items-center">
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                </div>`;
+        } else {
+            // Parsing Markdown ke HTML yang Rapi
+            // Kita konfigurasi agar baris baru (<br>) ditangani dengan benar
+            marked.setOptions({
+                breaks: true, // Enter menjadi <br>
+                gfm: true     // GitHub Flavored Markdown (tabel, strikethrough, dll)
+            });
+            
+            const rawHtml = marked.parse(message);
+            // Bersihkan HTML (Sanitize) agar aman dari XSS
+            const cleanHtml = DOMPurify.sanitize(rawHtml);
+            
+            // Bungkus dengan div class khusus untuk styling list/heading
+            contentHtml = `<div class="markdown-body text-sm leading-relaxed space-y-2">${cleanHtml}</div>`;
+        }
     }
+    // -------------------------------
 
     if (sender === 'user') {
         // === TAMPILAN USER (KANAN) ===
         wrapper.classList.add('justify-end');
-
-        // Cek Avatar User Custom
         let userAvatarHtml;
         if (config.userAvatar) {
             userAvatarHtml = `<img src="${config.userAvatar}" class="w-8 h-8 rounded-full object-cover shadow border border-white/20">`;
         } else {
-            // Default Initials (U)
             userAvatarHtml = `
                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow">
                     ${user.username.charAt(0).toUpperCase()}
@@ -2005,42 +2239,29 @@ function addMessageToChat(message, sender, elementId = null) {
         wrapper.innerHTML = `
             <div class="flex flex-col items-end max-w-[80%]">
                 <div class="bg-indigo-600 text-white px-5 py-3 rounded-[20px] rounded-tr-sm shadow-md">
-                    <p class="leading-relaxed whitespace-pre-wrap text-sm">${message}</p>
+                    ${contentHtml}
                 </div>
             </div>
-            ${userAvatarHtml} `;
+            ${userAvatarHtml} 
+        `;
     } else {
         // === TAMPILAN BOT (KIRI) ===
         wrapper.classList.add('justify-start');
-        
-        // Cek Avatar Bot Custom
         let botAvatarHtml;
         if (config.botAvatar) {
             botAvatarHtml = `<img src="${config.botAvatar}" class="w-8 h-8 rounded-full object-cover shadow border border-gray-200">`;
         } else {
-            // Default Icon Robot
             botAvatarHtml = `
                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center text-white shadow-sm border border-white/10">
                     <i class="bi bi-robot"></i>
                 </div>`;
         }
 
-        let contentHtml = '';
-        if (message === '...') {
-            contentHtml = `
-                <div class="flex space-x-1 h-6 items-center">
-                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                </div>`;
-        } else {
-            contentHtml = `<p class="leading-relaxed text-gray-800 dark:text-gray-100 text-sm">${simpleMarkdown(message)}</p>`;
-        }
-
         wrapper.innerHTML = `
-            ${botAvatarHtml} <div class="flex flex-col max-w-[85%]">
+            ${botAvatarHtml} 
+            <div class="flex flex-col max-w-[85%]">
                 <div class="text-[10px] font-bold text-gray-500 mb-1 ml-1 uppercase">Asisten</div>
-                <div class="px-1 py-1">
+                <div class="px-1 py-1 text-gray-800 dark:text-gray-100">
                     ${contentHtml}
                 </div>
             </div>
@@ -2097,7 +2318,7 @@ function saveChatConfig(newConfig) {
 }
 
 // ==========================================
-// MODAL SETTINGS (TAMPILAN TOKO)
+// MODAL SETTINGS (UPDATE: PREVIEW LEBIH KECIL & RAPI)
 // ==========================================
 window.openSettingsModal = async () => {
     const modal = document.getElementById("modal-container");
@@ -2110,7 +2331,6 @@ window.openSettingsModal = async () => {
         const data = await res.json();
         
         const appName = data.app_name || "Marhaban Parfume";
-        // URL lengkap atau kosong
         const bgUrl = data.background_url || ""; 
         const logoUrl = data.logo_url || "";
 
@@ -2174,25 +2394,51 @@ window.openSettingsModal = async () => {
                             </div>
                         </form>
 
-                        <div class="relative bg-gray-900 rounded-xl overflow-hidden aspect-video shadow-inner border-4 border-gray-800">
-                            <div id="previewBg" class="absolute inset-0 bg-cover bg-center transition-all duration-500" style="background-image: url('${bgUrl}'); background-color: #111827;">
-                                <div class="absolute inset-0 bg-black/50 backdrop-blur-[1px]"></div>
-                            </div>
+                        <div class="relative">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Live Preview</h3>
                             
-                            <div class="absolute inset-0 flex items-center justify-center p-4">
-                                <div class="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-2xl w-48 text-center transform scale-90">
-                                    <img id="previewLogoImg" src="${logoUrl}" class="${logoUrl ? '' : 'hidden'} h-8 mx-auto mb-2 object-contain">
-                                    <div id="previewLogoIcon" class="${logoUrl ? 'hidden' : ''} w-8 h-8 mx-auto mb-2 rounded-full bg-indigo-600 flex items-center justify-center text-white"><i class="bi bi-shop"></i></div>
-                                    
-                                    <h4 id="previewTitle" class="font-bold text-gray-800 text-sm">${appName}</h4>
-                                    <div class="mt-3 space-y-2 opacity-50">
-                                        <div class="h-6 bg-gray-200 rounded w-full"></div>
-                                        <div class="h-6 bg-gray-200 rounded w-full"></div>
-                                        <div class="h-8 bg-indigo-600 rounded w-full mt-2"></div>
+                            <div class="relative w-full aspect-[9/16] sm:aspect-video bg-slate-900 rounded-xl shadow-inner border-4 border-gray-800 overflow-hidden group">
+                                
+                                <div id="previewBg" class="absolute inset-0 bg-cover bg-center transition-all duration-500" style="background-image: url('${bgUrl}'); background-color: #0f172a;">
+                                    <div class="absolute inset-0 bg-gradient-to-br from-slate-900/80 to-slate-900/60"></div>
+                                </div>
+                                
+                                <div class="absolute inset-0 flex items-center justify-center p-4">
+                                    <div class="bg-white/90 backdrop-blur-md border border-white/50 p-5 rounded-xl shadow-2xl w-56 text-center transform transition-transform scale-75 group-hover:scale-90 relative">
+                                        
+                                        <div class="relative inline-block mb-3">
+                                            <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full blur opacity-20"></div>
+                                            
+                                            <img id="previewLogoImg" src="${logoUrl}" class="${logoUrl ? '' : 'hidden'} relative w-14 h-14 rounded-full object-cover border-2 border-white shadow-md bg-white">
+                                            
+                                            <div id="previewLogoIcon" class="${logoUrl ? 'hidden' : ''} relative w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white border-2 border-white shadow-md">
+                                                <i class="bi bi-bag-heart-fill text-xl"></i>
+                                            </div>
+                                        </div>
+                                        
+                                        <h4 id="previewTitle" class="font-bold text-slate-800 text-base leading-tight mb-1">${appName}</h4>
+                                        <p class="text-[10px] text-slate-500 mb-4 font-medium">Silakan masuk</p>
+                                        
+                                        <div class="space-y-2 mb-4 text-left">
+                                            <div>
+                                                <div class="h-6 bg-white border border-slate-200 rounded w-full"></div>
+                                            </div>
+                                            <div>
+                                                <div class="h-6 bg-white border border-slate-200 rounded w-full"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="h-8 bg-slate-900 rounded-lg w-full shadow-lg flex items-center justify-center">
+                                            <div class="h-1.5 w-16 bg-white/90 rounded"></div>
+                                        </div>
+
+                                        <div class="mt-3 border-t border-slate-200 pt-2">
+                                            <div class="h-1 w-20 bg-gray-300 mx-auto rounded"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="absolute top-2 left-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded">Live Preview</div>
+                            <p class="text-center text-[10px] text-gray-400 mt-2">Tampilan pratinjau login.</p>
                         </div>
 
                     </div>
@@ -2207,32 +2453,24 @@ window.openSettingsModal = async () => {
             </div>
         `;
 
-        // === LOGIKA INTERAKTIF ===
         const inpName = document.getElementById('confAppName');
-        
-        // Variabel Background
         const bgInput = document.getElementById('bgInput');
         const bgPreviewBox = document.getElementById('bgPreviewBox');
         const btnDeleteBg = document.getElementById('btnDeleteBg');
         const isDeleteBg = document.getElementById('isDeleteBg');
         const previewBg = document.getElementById('previewBg');
-
-        // Variabel Logo
         const logoInput = document.getElementById('logoInput');
         const isDeleteLogo = document.getElementById('isDeleteLogo');
         const btnDeleteLogo = document.getElementById('btnDeleteLogo');
         const saveBtn = document.getElementById('btnSaveSettings');
 
-        // 1. LOGIKA PREVIEW BACKGROUND
         bgInput.addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    // Update Box di Form
                     bgPreviewBox.style.backgroundImage = `url('${e.target.result}')`;
                     bgPreviewBox.classList.remove('hidden');
-                    // Update Live Preview Kanan
                     previewBg.style.backgroundImage = `url('${e.target.result}')`;
                     isDeleteBg.value = "false";
                 }
@@ -2241,16 +2479,16 @@ window.openSettingsModal = async () => {
         });
 
         btnDeleteBg.addEventListener('click', () => {
-            if(confirm("Hapus gambar background dan kembali ke warna hitam?")) {
+            if(confirm("Hapus gambar background?")) {
                 bgPreviewBox.style.backgroundImage = '';
                 bgPreviewBox.classList.add('hidden');
-                previewBg.style.backgroundImage = ''; // Jadi hitam (default CSS)
+                previewBg.style.backgroundImage = ''; 
+                previewBg.style.backgroundColor = '#0f172a'; 
                 bgInput.value = "";
                 isDeleteBg.value = "true";
             }
         });
 
-        // 2. LOGIKA PREVIEW LOGO
         logoInput.addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
@@ -2262,7 +2500,6 @@ window.openSettingsModal = async () => {
                     document.getElementById('previewLogoImg').src = e.target.result;
                     document.getElementById('previewLogoImg').classList.remove('hidden');
                     document.getElementById('previewLogoIcon').classList.add('hidden');
-                    
                     btnDeleteLogo.classList.remove('hidden');
                     isDeleteLogo.value = "false";
                 }
@@ -2283,12 +2520,10 @@ window.openSettingsModal = async () => {
             }
         });
 
-        // 3. LOGIKA PREVIEW NAMA
         inpName.addEventListener('input', () => {
             document.getElementById('previewTitle').innerText = inpName.value || "Nama Toko";
         });
 
-        // 4. SIMPAN DATA (FORMDATA)
         saveBtn.addEventListener('click', async () => {
             saveBtn.innerHTML = `<span class="spinner-border spinner-border-sm mr-2"></span> Menyimpan...`;
             saveBtn.disabled = true;

@@ -10,11 +10,72 @@ let myWeightedChart = null; // Variabel global untuk chart di 'Hasil Perhitungan
 let myDashboardChart = null; // Variabel global untuk chart di 'Dashboard'
 let globalChatHistory = []; // <--- Tambahkan ini untuk menyimpan chat sementara
 
-// Jika belum login, redirect
+
+// ==========================================
+// CEK SESI / TOKEN (Jika belum login, redirect ke login.html)
+// ==========================================
 if (!token) {
-  alert("Sesi Anda berakhir. Silakan login ulang.");
-  window.location.href = "login.html";
-  throw new Error("Not authenticated");
+    // Fungsi untuk membuat dan memunculkan modal sesi habis
+    const showSessionExpiredModal = () => {
+        // 1. Buat elemen div untuk wrapper modal
+        const modal = document.createElement('div');
+        // Set class Tailwind untuk overlay (gelap & blur)
+        modal.className = "fixed inset-0 z-[9999] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm p-4 font-sans animate-fade-in";
+        
+        // 2. Isi HTML Modal (Kartu Cantik)
+        modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden border border-gray-100 dark:border-gray-700 transform transition-all scale-100">
+                
+                <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-orange-500 to-red-500"></div>
+                <div class="absolute -top-12 -right-12 w-32 h-32 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="relative z-10 mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-red-50 dark:bg-red-900/20 mb-6 shadow-sm ring-1 ring-red-100 dark:ring-red-900/30">
+                    <i class="bi bi-shield-lock-fill text-4xl text-red-500 dark:text-red-400 drop-shadow-sm"></i>
+                </div>
+                
+                <h3 class="relative z-10 text-2xl font-bold text-gray-800 dark:text-white mb-2 tracking-tight">Sesi Berakhir</h3>
+                <p class="relative z-10 text-gray-500 dark:text-gray-400 mb-8 text-sm leading-relaxed">
+                    Maaf, sesi login Anda telah habis demi keamanan. Silakan masuk kembali untuk melanjutkan akses.
+                </p>
+                
+                <button id="btnLoginRedirect" class="relative z-10 group w-full py-3.5 px-4 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2">
+                    <span>Login Ulang</span>
+                    <i class="bi bi-box-arrow-in-right text-lg group-hover:translate-x-1 transition-transform"></i>
+                </button>
+            </div>
+        `;
+
+        // 3. Masukkan ke dalam Body HTML
+        // Cek apakah body sudah siap
+        if (document.body) {
+            document.body.appendChild(modal);
+            document.body.style.overflow = 'hidden'; // Kunci scroll agar tidak bisa digerakkan
+            
+            // Tambahkan event klik pada tombol
+            setTimeout(() => {
+                const btn = document.getElementById('btnLoginRedirect');
+                if(btn) {
+                    btn.focus(); // Fokus ke tombol
+                    btn.onclick = () => {
+                        window.location.href = "login.html"; // Redirect saat tombol diklik
+                    };
+                }
+            }, 50);
+        } else {
+            // Jika script dijalankan di <head>, tunggu konten dimuat
+            window.addEventListener('DOMContentLoaded', () => {
+                document.body.appendChild(modal);
+                document.getElementById('btnLoginRedirect').onclick = () => window.location.href = "login.html";
+            });
+        }
+    };
+
+    // Jalankan fungsi modal
+    showSessionExpiredModal();
+
+    // PENTING: Hentikan eksekusi script selanjutnya agar tidak error karena token kosong
+    throw new Error("Sesi habis. Script dihentikan untuk menunggu login ulang.");
 }
 
 // Tampilkan nama user
@@ -81,10 +142,10 @@ window.loadContent = async (page) => {
 
   try {
     // ======================
-    // DASHBOARD
+    // DASHBOARD (UPDATED: TAMBAH NAVIGASI ALTERNATIF)
     // ======================
     if (page === "dashboard") {
-      container.innerHTML = `
+        container.innerHTML = `
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
             </div>
@@ -94,27 +155,31 @@ window.loadContent = async (page) => {
                 Memuat data dashboard...
             </div>
         `;
-      try {
-        const [altRes, kritRes, calcRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/perhitungan/hitung`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-        ]);
-        const altData = await altRes.json();
-        const kritData = await kritRes.json();
-        if (!calcRes.ok) {
-          throw new Error("Data perhitungan belum siap.");
-        }
-        const calcData = await calcRes.json();
-        const totalAlternatif = (altData.data || altData || []).length;
-        const totalKriteria = (kritData.data || kritData || []).length;
-        const ranking = calcData.ranking || [];
-        const peringkatSatu = ranking.find(r => r.rank === 1) || { alternatif_nama: "Belum Ada", nilai: 0 };
-        const dashboardHTML = `
+        try {
+            const [altRes, kritRes, calcRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } }),
+                fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } }),
+                fetch(`${API_BASE_URL}/perhitungan/hitung`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+            ]);
+            const altData = await altRes.json();
+            const kritData = await kritRes.json();
+            
+            if (!calcRes.ok) {
+                throw new Error("Data perhitungan belum siap.");
+            }
+            
+            const calcData = await calcRes.json();
+            const totalAlternatif = (altData.data || altData || []).length;
+            const totalKriteria = (kritData.data || kritData || []).length;
+            const ranking = calcData.ranking || [];
+            const peringkatSatu = ranking.find(r => r.rank === 1) || { alternatif_nama: "Belum Ada", nilai: 0 };
+            
+            const dashboardHTML = `
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
             </div>
             <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
+            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 border-green-500">
                     <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Peringkat #1</h3>
@@ -132,41 +197,58 @@ window.loadContent = async (page) => {
                     <p class="text-sm text-gray-600 dark:text-gray-300">Total kriteria penilaian</p>
                 </div>
             </div>
+
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
                 <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Grafik Skor Akhir Alternatif</h3>
                 <div style="height: 350px;">
                     <canvas id="dashboard-chart"></canvas>
                 </div>
             </div>
+
             <div class="cetak-sembunyi">
                 <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Aksi Cepat</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button onclick="loadContent('penilaian')" class="bg-blue-600 text-white p-4 rounded-lg shadow-md hover:bg-blue-700 transition font-semibold flex items-center justify-center">
-                        <i class="bi bi-pencil-square mr-2"></i> Input Penilaian
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    
+                    <button onclick="loadContent('alternatif')" class="bg-indigo-600 text-white p-4 rounded-lg shadow-md hover:bg-indigo-700 transition font-semibold flex items-center justify-center">
+                        <i class="bi bi-people-fill mr-2"></i> Data Alternatif
                     </button>
-                    <button onclick="loadContent('perhitungan')" class="bg-green-600 text-white p-4 rounded-lg shadow-md hover:bg-green-700 transition font-semibold flex items-center justify-center">
-                        <i class="bi bi-bar-chart-line-fill mr-2"></i> Lihat Hasil Detail
-                    </button>
+
                     <button onclick="loadContent('kriteria')" class="bg-gray-600 text-white p-4 rounded-lg shadow-md hover:bg-gray-700 transition font-semibold flex items-center justify-center">
                         <i class="bi bi-gear-fill mr-2"></i> Atur Kriteria
                     </button>
+
+                    <button onclick="loadContent('penilaian')" class="bg-blue-600 text-white p-4 rounded-lg shadow-md hover:bg-blue-700 transition font-semibold flex items-center justify-center">
+                        <i class="bi bi-pencil-square mr-2"></i> Input Penilaian
+                    </button>
+                    
+                    <button onclick="loadContent('perhitungan')" class="bg-green-600 text-white p-4 rounded-lg shadow-md hover:bg-green-700 transition font-semibold flex items-center justify-center">
+                        <i class="bi bi-bar-chart-line-fill mr-2"></i> Lihat Hasil Detail
+                    </button>
+                    
                 </div>
             </div>
-        `;
-        container.innerHTML = dashboardHTML;
-        renderDashboardChart(ranking);
-      } catch (err) {
-        console.error("Gagal memuat dashboard:", err);
-        container.innerHTML = `
+            `;
+            
+            container.innerHTML = dashboardHTML;
+            renderDashboardChart(ranking);
+
+        } catch (err) {
+            console.error("Gagal memuat dashboard:", err);
+            container.innerHTML = `
             <h2 class="text-2xl font-bold mb-4 dark:text-white">Dashboard</h2>
             <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
             <div class="p-4 bg-yellow-100 text-yellow-800 rounded-lg shadow-md">
                 <strong>Data Perhitungan Belum Siap.</strong><br>
                 <span class="text-sm">Anda perlu mengisi halaman "Nilai Alternatif" terlebih dahulu agar hasil perhitungan bisa tampil di dashboard.</span>
+                <div class="mt-3">
+                    <button onclick="loadContent('alternatif')" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-bold hover:bg-indigo-700 transition">
+                         <i class="bi bi-people-fill mr-1"></i> Ke Data Alternatif
+                    </button>
+                </div>
             </div>
         `;
-      }
-      return;
+        }
+        return;
     }
 
    // ======================
@@ -595,7 +677,7 @@ window.loadContent = async (page) => {
         }
 
         // ============================================
-        // FUNGSI LOGIKA SUB KRITERIA (FIX: SORTING & JUDUL)
+        // FUNGSI LOGIKA SUB KRITERIA 
         // ============================================
 
         window.openSubKriteria = async function (id, namaKriteria) {
@@ -1338,12 +1420,6 @@ window.loadContent = async (page) => {
       container.innerHTML = `
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Backup Data</h2>
-                <nav class="text-sm" aria-label="Breadcrumb">
-                  <ol class="list-none p-0 inline-flex">
-                    <li class="flex items-center"><span class="text-gray-500 dark:text-gray-400">Dashboard</span><i class="bi bi-chevron-right mx-2 text-gray-400"></i></li>
-                    <li class="flex items-center"><span class="text-gray-700 dark:text-gray-200 font-semibold">Backup Data</span></li>
-                  </ol>
-                </nav>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
                  <p class="text-gray-700 dark:text-gray-300 mb-2">*Untuk menjaga dari kerusakan data, data hilang dan hal-hal yang tidak diinginkan silahkan melakukan backup berkala.</p>
@@ -1353,19 +1429,6 @@ window.loadContent = async (page) => {
                 </button>
             </div>
             <div id="backupTableContainer" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-                <div class="p-4 flex justify-between items-center">
-                     <div>
-                        <label for="show-entries" class="text-sm text-gray-600 dark:text-gray-300">Tampil</label>
-                        <select id="show-entries" class="border border-gray-300 dark:border-gray-600 rounded-md p-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                            <option value="10">10</option><option value="25">25</option><option value="50">50</option>
-                        </select>
-                        <span class="text-sm text-gray-600 dark:text-gray-300 ml-1">Data</span>
-                     </div>
-                     <div>
-                        <label for="search-box" class="text-sm text-gray-600 dark:text-gray-300 mr-2">Pencarian:</label>
-                        <input type="text" id="search-box" class="border border-gray-300 dark:border-gray-600 rounded-md p-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                     </div>
-                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full">
                         <thead class="bg-gray-50 dark:bg-gray-700">
@@ -1381,14 +1444,6 @@ window.loadContent = async (page) => {
                             <tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Memuat data backup...</td></tr>
                         </tbody>
                     </table>
-                </div>
-                <div class="p-4 flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
-                    <div id="table-info">Menampilkan 0 sampai 0 dari 0 data</div>
-                    <div>
-                        <button class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">Sebelumnya</button>
-                        <span id="page-numbers" class="px-3 py-1 text-blue-600 font-bold">1</span>
-                        <button class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">Selanjutnya</button>
-                    </div>
                 </div>
             </div>
         `;
@@ -1893,47 +1948,57 @@ async function deleteAdminClient(id) {
 }
 
 // ============================
-// FUNGSI KHUSUS BACKUP
+// FUNGSI KHUSUS BACKUP (UPDATED)
 // ============================
+
 async function loadBackupTable() {
   const tableBody = document.getElementById("backup-table-body");
-  const tableInfo = document.getElementById("table-info");
+
   if (!tableBody) return;
+
+  // Tampilkan loading state
   tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Memuat data backup...</td></tr>`;
+
   try {
     const res = await fetch(`${API_BASE_URL}/backup`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
     const files = data.data || [];
+
+    // Jika data kosong
     if (!files.length) {
       tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Belum ada file backup.</td></tr>`;
-      tableInfo.innerText = "Menampilkan 0 sampai 0 dari 0 data";
+
       return;
     }
+
+    // Render baris tabel
     const rows = files.map((file, index) => {
       const { tanggal, waktu } = formatBackupDate(file.time);
       return `
-                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${file.name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${tanggal}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${waktu}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
-                        <button class="px-3 py-1 text-xs font-medium text-white bg-green-500 rounded-md hover:bg-green-600 transition-colors" onclick="downloadBackup('${file.name}')">Download</button>
-                        <button class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors" onclick="deleteBackup('${file.name}')">Hapus</button>
-                    </td>
-                </tr>
-            `;
+        <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${index + 1}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${file.name}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${tanggal}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${waktu}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
+                <button class="px-3 py-1 text-xs font-medium text-white bg-green-500 rounded-md hover:bg-green-600 transition-colors" onclick="downloadBackup('${file.name}')">Download</button>
+                <button class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors" onclick="deleteBackup('${file.name}')">Hapus</button>
+            </td>
+        </tr>
+      `;
     }).join('');
+
     tableBody.innerHTML = rows;
-    tableInfo.innerText = `Menampilkan 1 sampai ${files.length} dari ${files.length} data`;
+
   } catch (err) {
     showToast(`Gagal memuat daftar backup: ${err.message}`, 'error');
     tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Gagal memuat data.</td></tr>`;
   }
 }
 
+// Fungsi helper format tanggal (Tidak ada perubahan)
 function formatBackupDate(dateString) {
   const date = new Date(dateString);
   const optionsTanggal = { year: 'numeric', month: 'long', day: 'numeric' };
@@ -1944,6 +2009,7 @@ function formatBackupDate(dateString) {
   };
 }
 
+// Fungsi download (Tidak ada perubahan)
 async function downloadBackup(filename) {
   showToast(`Mempersiapkan download: ${filename}`, 'success');
   try {
@@ -1970,9 +2036,12 @@ async function downloadBackup(filename) {
   }
 }
 
+// Fungsi hapus 
 async function deleteBackup(filename) {
   const confirmed = await showConfirm("Hapus Backup", `Yakin ingin menghapus file backup: ${filename}?`);
+  
   if (!confirmed) return;
+  
   try {
     const res = await fetch(`${API_BASE_URL}/backup/${filename}`, {
       method: 'DELETE',
@@ -1980,6 +2049,7 @@ async function deleteBackup(filename) {
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.message);
+    
     showToast(result.message || 'File backup berhasil dihapus.');
     await loadBackupTable();
   } catch (err) {
@@ -2318,22 +2388,72 @@ function saveChatConfig(newConfig) {
 }
 
 // ==========================================
-// MODAL SETTINGS (UPDATE: PREVIEW LEBIH KECIL & RAPI)
+// MODAL SETTINGS/TAMPILAN TOKO
 // ==========================================
+
+// Fungsi bantuan untuk menampilkan Konfirmasi Custom (Pengganti alert bawaan)
+const showCustomConfirm = (title, message, onConfirm) => {
+    // Membuat elemen div untuk modal konfirmasi
+    const confirmModal = document.createElement('div');
+    confirmModal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4';
+    
+    // HTML untuk tampilan alert
+    confirmModal.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-sm w-full p-6 transform transition-all scale-100 border border-gray-100 dark:border-gray-700">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                    <i class="bi bi-exclamation-triangle text-xl text-red-600 dark:text-red-400"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">${title}</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">${message}</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="btnCancelConfirm" class="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                    Batal
+                </button>
+                <button id="btnYesConfirm" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-lg shadow-red-600/30 transition">
+                    Ya, Hapus
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Masukkan modal ke dalam body
+    document.body.appendChild(confirmModal);
+
+    // Event Listener tombol Batal
+    confirmModal.querySelector('#btnCancelConfirm').addEventListener('click', () => {
+        confirmModal.remove(); // Hapus modal dari DOM
+    });
+
+    // Event Listener tombol Ya
+    confirmModal.querySelector('#btnYesConfirm').addEventListener('click', () => {
+        onConfirm(); // Jalankan logika penghapusan
+        confirmModal.remove(); // Hapus modal setelah selesai
+    });
+};
+
 window.openSettingsModal = async () => {
     const modal = document.getElementById("modal-container");
+    
+    // Menampilkan container modal utama
     modal.classList.remove("hidden");
     modal.classList.add("flex");
+    
+    // Tampilan loading sementara
     modal.innerHTML = `<div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl flex items-center gap-3"><span class="spinner-border text-indigo-600"></span><span class="text-gray-600 dark:text-gray-300">Memuat pengaturan...</span></div>`;
 
     try {
+        // Mengambil data pengaturan dari server
         const res = await fetch(`${API_BASE_URL}/settings`);
         const data = await res.json();
         
+        // Menetapkan nilai default jika data kosong
         const appName = data.app_name || "Marhaban Parfume";
         const bgUrl = data.background_url || ""; 
         const logoUrl = data.logo_url || "";
 
+        // Merender tampilan HTML Modal Pengaturan Utama
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl m-auto overflow-hidden flex flex-col max-h-[90vh]">
                 
@@ -2420,12 +2540,8 @@ window.openSettingsModal = async () => {
                                         <p class="text-[10px] text-slate-500 mb-4 font-medium">Silakan masuk</p>
                                         
                                         <div class="space-y-2 mb-4 text-left">
-                                            <div>
-                                                <div class="h-6 bg-white border border-slate-200 rounded w-full"></div>
-                                            </div>
-                                            <div>
-                                                <div class="h-6 bg-white border border-slate-200 rounded w-full"></div>
-                                            </div>
+                                            <div><div class="h-6 bg-white border border-slate-200 rounded w-full"></div></div>
+                                            <div><div class="h-6 bg-white border border-slate-200 rounded w-full"></div></div>
                                         </div>
 
                                         <div class="h-8 bg-slate-900 rounded-lg w-full shadow-lg flex items-center justify-center">
@@ -2453,6 +2569,7 @@ window.openSettingsModal = async () => {
             </div>
         `;
 
+        // --- DEFINISI VARIABEL ELEMENT DOM ---
         const inpName = document.getElementById('confAppName');
         const bgInput = document.getElementById('bgInput');
         const bgPreviewBox = document.getElementById('bgPreviewBox');
@@ -2464,36 +2581,47 @@ window.openSettingsModal = async () => {
         const btnDeleteLogo = document.getElementById('btnDeleteLogo');
         const saveBtn = document.getElementById('btnSaveSettings');
 
+        // --- EVENT: GANTI BACKGROUND (PREVIEW) ---
         bgInput.addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
+                    // Update preview kecil dan besar
                     bgPreviewBox.style.backgroundImage = `url('${e.target.result}')`;
                     bgPreviewBox.classList.remove('hidden');
                     previewBg.style.backgroundImage = `url('${e.target.result}')`;
-                    isDeleteBg.value = "false";
+                    isDeleteBg.value = "false"; // Reset status hapus
                 }
                 reader.readAsDataURL(file);
             }
         });
 
+        // --- EVENT: HAPUS BACKGROUND (CUSTOM ALERT) ---
         btnDeleteBg.addEventListener('click', () => {
-            if(confirm("Hapus gambar background?")) {
-                bgPreviewBox.style.backgroundImage = '';
-                bgPreviewBox.classList.add('hidden');
-                previewBg.style.backgroundImage = ''; 
-                previewBg.style.backgroundColor = '#0f172a'; 
-                bgInput.value = "";
-                isDeleteBg.value = "true";
-            }
+            // Menggunakan Custom Alert, bukan confirm() bawaan browser
+            showCustomConfirm(
+                "Hapus Background?", 
+                "Tindakan ini akan menghapus gambar background dan kembali ke warna default.", 
+                () => {
+                    // Logika Penghapusan Background (Tetap sama)
+                    bgPreviewBox.style.backgroundImage = '';
+                    bgPreviewBox.classList.add('hidden');
+                    previewBg.style.backgroundImage = ''; 
+                    previewBg.style.backgroundColor = '#0f172a'; 
+                    bgInput.value = "";
+                    isDeleteBg.value = "true"; // Menandai untuk dihapus di server
+                }
+            );
         });
 
+        // --- EVENT: GANTI LOGO (PREVIEW) ---
         logoInput.addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
+                    // Update semua elemen logo (preview kecil, preview besar, icon placeholder)
                     document.getElementById('logoPreview').src = e.target.result;
                     document.getElementById('logoPreview').classList.remove('hidden');
                     document.getElementById('logoPlaceholder').classList.add('hidden');
@@ -2507,24 +2635,34 @@ window.openSettingsModal = async () => {
             }
         });
 
+        // --- EVENT: HAPUS LOGO (CUSTOM ALERT) ---
         btnDeleteLogo.addEventListener('click', () => {
-            if(confirm("Hapus logo?")) {
-                document.getElementById('logoPreview').src = "";
-                document.getElementById('logoPreview').classList.add('hidden');
-                document.getElementById('logoPlaceholder').classList.remove('hidden');
-                document.getElementById('previewLogoImg').classList.add('hidden');
-                document.getElementById('previewLogoIcon').classList.remove('hidden');
-                btnDeleteLogo.classList.add('hidden');
-                logoInput.value = "";
-                isDeleteLogo.value = "true";
-            }
+            // Menggunakan Custom Alert
+            showCustomConfirm(
+                "Hapus Logo?", 
+                "Apakah Anda yakin ingin menghapus logo toko? Icon default akan digunakan.", 
+                () => {
+                    // Logika Penghapusan Logo (Tetap sama)
+                    document.getElementById('logoPreview').src = "";
+                    document.getElementById('logoPreview').classList.add('hidden');
+                    document.getElementById('logoPlaceholder').classList.remove('hidden');
+                    document.getElementById('previewLogoImg').classList.add('hidden');
+                    document.getElementById('previewLogoIcon').classList.remove('hidden');
+                    btnDeleteLogo.classList.add('hidden');
+                    logoInput.value = "";
+                    isDeleteLogo.value = "true"; // Menandai untuk dihapus di server
+                }
+            );
         });
 
+        // --- EVENT: UPDATE NAMA TOKO REALTIME ---
         inpName.addEventListener('input', () => {
             document.getElementById('previewTitle').innerText = inpName.value || "Nama Toko";
         });
 
+        // --- EVENT: SIMPAN PERUBAHAN KE SERVER ---
         saveBtn.addEventListener('click', async () => {
+            // Ubah tombol jadi loading
             saveBtn.innerHTML = `<span class="spinner-border spinner-border-sm mr-2"></span> Menyimpan...`;
             saveBtn.disabled = true;
 
@@ -2533,6 +2671,7 @@ window.openSettingsModal = async () => {
             formData.append('delete_logo', isDeleteLogo.value);
             formData.append('delete_background', isDeleteBg.value);
 
+            // Lampirkan file hanya jika user memilih file baru
             if (logoInput.files[0]) formData.append('logo', logoInput.files[0]);
             if (bgInput.files[0]) formData.append('background', bgInput.files[0]);
 
@@ -2549,6 +2688,7 @@ window.openSettingsModal = async () => {
                 document.getElementById('modal-container').classList.add('hidden');
             } catch (err) {
                 showToast("Error: " + err.message, "error");
+                // Reset tombol jika gagal
                 saveBtn.innerHTML = `<i class="bi bi-check-lg"></i> Simpan Perubahan`;
                 saveBtn.disabled = false;
             }

@@ -12,6 +12,17 @@ let globalChatHistory = []; // <--- Tambahkan ini untuk menyimpan chat sementara
 
 
 // ==========================================
+// MENCEGAH TOMBOL BACK/FORWARD (BFCache)
+// ==========================================
+window.addEventListener('pageshow', function(event) {
+    // Jika user menekan tombol Back/Forward dan halaman dimuat dari cache memori
+    if (event.persisted) {
+        // Paksa reload halaman untuk memicu pengecekan token ulang
+        window.location.reload();
+    }
+});
+
+// ==========================================
 // CEK SESI / TOKEN (Jika belum login, redirect ke login.html)
 // ==========================================
 if (!token) {
@@ -125,9 +136,13 @@ if (user.role !== "superadmin") {
 
 // Logout
 document.getElementById("logoutBtn").addEventListener("click", () => {
+  // 1. Hapus data sesi
   localStorage.removeItem("token");
   localStorage.removeItem("user");
-  window.location.href = "login.html";
+
+  // 2. Gunakan REPLACE agar halaman dashboard "dihapus" dari riwayat browser
+  // Jadi tombol Back tidak akan berfungsi untuk kembali ke dashboard
+  window.location.replace("login.html");
 });
 
 // ============================

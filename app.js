@@ -9,6 +9,8 @@ const mainHeader = document.querySelector('#page-content-wrapper header');
 let myWeightedChart = null; // Variabel global untuk chart di 'Hasil Perhitungan'
 let myDashboardChart = null; // Variabel global untuk chart di 'Dashboard'
 let globalChatHistory = []; // <--- Tambahkan ini untuk menyimpan chat sementara
+let globalCalculationData = null; // Menyimpan hasil hitung
+let myRadarChart = null; // Chart untuk modal detail
 
 
 // ==========================================
@@ -32,7 +34,7 @@ if (!token) {
         const modal = document.createElement('div');
         // Set class Tailwind untuk overlay (gelap & blur)
         modal.className = "fixed inset-0 z-[9999] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm p-4 font-sans animate-fade-in";
-        
+
         // 2. Isi HTML Modal (Kartu Cantik)
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden border border-gray-100 dark:border-gray-700 transform transition-all scale-100">
@@ -62,11 +64,11 @@ if (!token) {
         if (document.body) {
             document.body.appendChild(modal);
             document.body.style.overflow = 'hidden'; // Kunci scroll agar tidak bisa digerakkan
-            
+
             // Tambahkan event klik pada tombol
             setTimeout(() => {
                 const btn = document.getElementById('btnLoginRedirect');
-                if(btn) {
+                if (btn) {
                     btn.focus(); // Fokus ke tombol
                     btn.onclick = () => {
                         window.location.href = "login.html"; // Redirect saat tombol diklik
@@ -102,65 +104,65 @@ const labelMainPanel = document.getElementById("label-main-panel");
 const menuSettingsNavbar = document.getElementById("menu-settings-web"); // ID dari index.html
 
 if (user.role !== "superadmin") {
-  // === JIKA LOGIN SEBAGAI ADMIN BIASA ===
+    // === JIKA LOGIN SEBAGAI ADMIN BIASA ===
 
-  // 1. Sembunyikan menu Sidebar khusus Super Admin
-  if (labelSuperAdmin) labelSuperAdmin.style.display = "none";
-  if (menuManajemen) menuManajemen.style.display = "none";
-  if (menuBackup) menuBackup.style.display = "none";
+    // 1. Sembunyikan menu Sidebar khusus Super Admin
+    if (labelSuperAdmin) labelSuperAdmin.style.display = "none";
+    if (menuManajemen) menuManajemen.style.display = "none";
+    if (menuBackup) menuBackup.style.display = "none";
 
-  // 2. Sembunyikan menu "Tampilan Toko" di Navbar (Panah Bawah)
-  if (menuSettingsNavbar) menuSettingsNavbar.classList.add("hidden");
+    // 2. Sembunyikan menu "Tampilan Toko" di Navbar (Panah Bawah)
+    if (menuSettingsNavbar) menuSettingsNavbar.classList.add("hidden");
 
-  // 3. Judul pembatas bawah tetap "Admin Panel"
-  if (labelMainPanel) labelMainPanel.textContent = "ADMIN PANEL";
+    // 3. Judul pembatas bawah tetap "Admin Panel"
+    if (labelMainPanel) labelMainPanel.textContent = "ADMIN PANEL";
 
 } else {
-  // === JIKA LOGIN SEBAGAI SUPER ADMIN ===
+    // === JIKA LOGIN SEBAGAI SUPER ADMIN ===
 
-  // 1. Tampilkan menu Sidebar khusus
-  if (menuManajemen) menuManajemen.style.display = "flex";
-  if (menuBackup) menuBackup.style.display = "flex";
-  
-  if (labelSuperAdmin) {
-    labelSuperAdmin.style.display = "block";
-    labelSuperAdmin.textContent = "SYSTEM SETTINGS";
-  }
+    // 1. Tampilkan menu Sidebar khusus
+    if (menuManajemen) menuManajemen.style.display = "flex";
+    if (menuBackup) menuBackup.style.display = "flex";
 
-  // 2. Tampilkan menu "Tampilan Toko" di Navbar
-  if (menuSettingsNavbar) menuSettingsNavbar.classList.remove("hidden");
+    if (labelSuperAdmin) {
+        labelSuperAdmin.style.display = "block";
+        labelSuperAdmin.textContent = "SYSTEM SETTINGS";
+    }
 
-  // 3. Ubah judul pembatas bawah
-  if (labelMainPanel) labelMainPanel.textContent = "SUPER ADMIN PANEL";
+    // 2. Tampilkan menu "Tampilan Toko" di Navbar
+    if (menuSettingsNavbar) menuSettingsNavbar.classList.remove("hidden");
+
+    // 3. Ubah judul pembatas bawah
+    if (labelMainPanel) labelMainPanel.textContent = "SUPER ADMIN PANEL";
 }
 
 // Logout
 document.getElementById("logoutBtn").addEventListener("click", () => {
-  // 1. Hapus data sesi
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+    // 1. Hapus data sesi
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
 
-  // 2. Gunakan REPLACE agar halaman dashboard "dihapus" dari riwayat browser
-  // Jadi tombol Back tidak akan berfungsi untuk kembali ke dashboard
-  window.location.replace("login.html");
+    // 2. Gunakan REPLACE agar halaman dashboard "dihapus" dari riwayat browser
+    // Jadi tombol Back tidak akan berfungsi untuk kembali ke dashboard
+    window.location.replace("login.html");
 });
 
 // ============================
 // LOAD HALAMAN SPA
 // ============================
-window.loadContent = async (page) => {
-  const container = document.getElementById("content-container");
-  if (mainHeader) {
-    mainHeader.classList.add('shadow-md');
-  }
-  container.innerHTML = `<div class="p-8 text-gray-500 dark:text-gray-400 text-center">Memuat...</div>`;
+window.loadContent = async(page) => {
+        const container = document.getElementById("content-container");
+        if (mainHeader) {
+            mainHeader.classList.add('shadow-md');
+        }
+        container.innerHTML = `<div class="p-8 text-gray-500 dark:text-gray-400 text-center">Memuat...</div>`;
 
-  try {
-    // ======================
-    // DASHBOARD (UPDATED: TAMBAH NAVIGASI ALTERNATIF)
-    // ======================
-    if (page === "dashboard") {
-        container.innerHTML = `
+        try {
+            // ======================
+            // DASHBOARD (UPDATED: TAMBAH NAVIGASI ALTERNATIF)
+            // ======================
+            if (page === "dashboard") {
+                container.innerHTML = `
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
             </div>
@@ -170,26 +172,26 @@ window.loadContent = async (page) => {
                 Memuat data dashboard...
             </div>
         `;
-        try {
-            const [altRes, kritRes, calcRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } }),
-                fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } }),
-                fetch(`${API_BASE_URL}/perhitungan/hitung`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-            ]);
-            const altData = await altRes.json();
-            const kritData = await kritRes.json();
-            
-            if (!calcRes.ok) {
-                throw new Error("Data perhitungan belum siap.");
-            }
-            
-            const calcData = await calcRes.json();
-            const totalAlternatif = (altData.data || altData || []).length;
-            const totalKriteria = (kritData.data || kritData || []).length;
-            const ranking = calcData.ranking || [];
-            const peringkatSatu = ranking.find(r => r.rank === 1) || { alternatif_nama: "Belum Ada", nilai: 0 };
-            
-            const dashboardHTML = `
+                try {
+                    const [altRes, kritRes, calcRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } }),
+                        fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } }),
+                        fetch(`${API_BASE_URL}/perhitungan/hitung`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+                    ]);
+                    const altData = await altRes.json();
+                    const kritData = await kritRes.json();
+
+                    if (!calcRes.ok) {
+                        throw new Error("Data perhitungan belum siap.");
+                    }
+
+                    const calcData = await calcRes.json();
+                    const totalAlternatif = (altData.data || altData || []).length;
+                    const totalKriteria = (kritData.data || kritData || []).length;
+                    const ranking = calcData.ranking || [];
+                    const peringkatSatu = ranking.find(r => r.rank === 1) || { alternatif_nama: "Belum Ada", nilai: 0 };
+
+                    const dashboardHTML = `
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
             </div>
@@ -243,13 +245,13 @@ window.loadContent = async (page) => {
                 </div>
             </div>
             `;
-            
-            container.innerHTML = dashboardHTML;
-            renderDashboardChart(ranking);
 
-        } catch (err) {
-            console.error("Gagal memuat dashboard:", err);
-            container.innerHTML = `
+                    container.innerHTML = dashboardHTML;
+                    renderDashboardChart(ranking);
+
+                } catch (err) {
+                    console.error("Gagal memuat dashboard:", err);
+                    container.innerHTML = `
             <h2 class="text-2xl font-bold mb-4 dark:text-white">Dashboard</h2>
             <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
             <div class="p-4 bg-yellow-100 text-yellow-800 rounded-lg shadow-md">
@@ -262,17 +264,17 @@ window.loadContent = async (page) => {
                 </div>
             </div>
         `;
-        }
-        return;
-    }
+                }
+                return;
+            }
 
-   // ======================
-    // DATA ALTERNATIF
-    // ======================
-    if (page === "alternatif") {
-        let allAlternatifData = []; 
+            // ======================
+            // DATA ALTERNATIF
+            // ======================
+            if (page === "alternatif") {
+                let allAlternatifData = [];
 
-        container.innerHTML = `
+                container.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 
                 <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50/50 dark:bg-gray-800/50">
@@ -311,84 +313,84 @@ window.loadContent = async (page) => {
             </div>
         `;
 
-        const tableContainer = document.getElementById("altTable");
-        const btnAdd = document.getElementById("btnAddAlt");
-        const btnDeleteAll = document.getElementById("btnDeleteAll");
-        const searchInput = document.getElementById("searchAlt");
-        const badgeTotal = document.getElementById("totalDataBadge");
+                const tableContainer = document.getElementById("altTable");
+                const btnAdd = document.getElementById("btnAddAlt");
+                const btnDeleteAll = document.getElementById("btnDeleteAll");
+                const searchInput = document.getElementById("searchAlt");
+                const badgeTotal = document.getElementById("totalDataBadge");
 
-        await loadAlternatifData();
-
-        // === EVENT LISTENERS ===
-        btnAdd.addEventListener("click", () => showAltModal());
-        
-        searchInput.addEventListener("input", (e) => {
-            const keyword = e.target.value.toLowerCase();
-            const filteredData = allAlternatifData.filter(item => 
-                item.kode_alternatif.toLowerCase().includes(keyword) ||
-                item.nama_periode.toLowerCase().includes(keyword) ||
-                (item.deskripsi && item.deskripsi.toLowerCase().includes(keyword))
-            );
-            renderAlternatifTable(filteredData);
-        });
-
-        btnDeleteAll.addEventListener("click", async () => {
-            if (allAlternatifData.length === 0) return showToast("Data kosong.", "error");
-            const confirmed = await showConfirm("Hapus Semua?", "PERINGATAN: Semua data alternatif akan dihapus permanen.");
-            if (!confirmed) return;
-
-            const originalContent = btnDeleteAll.innerHTML;
-            btnDeleteAll.disabled = true;
-            btnDeleteAll.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-
-            try {
-                const deletePromises = allAlternatifData.map(item => 
-                    fetch(`${API_BASE_URL}/alternatif/${item.id}`, {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` }
-                    })
-                );
-                await Promise.all(deletePromises);
-                showToast("Data berhasil di-reset!", "success");
                 await loadAlternatifData();
-            } catch (err) {
-                console.error(err);
-                showToast("Gagal menghapus sebagian data.", "error");
-                await loadAlternatifData();
-            } finally {
-                btnDeleteAll.disabled = false;
-                btnDeleteAll.innerHTML = originalContent;
-            }
-        });
 
-        // === FUNCTIONS ===
-        async function loadAlternatifData() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } });
-                const data = await res.json();
-                allAlternatifData = (data.data || data || []).sort((a, b) => a.id - b.id);
-                badgeTotal.innerText = allAlternatifData.length;
-                badgeTotal.classList.remove('hidden');
-                renderAlternatifTable(allAlternatifData);
-            } catch (err) {
-                console.error(err);
-                tableContainer.innerHTML = `<div class="p-10 text-center text-red-500">Gagal terhubung ke server.</div>`;
-            }
-        }
+                // === EVENT LISTENERS ===
+                btnAdd.addEventListener("click", () => showAltModal());
 
-        function renderAlternatifTable(data) {
-            if (!data.length) {
-                tableContainer.innerHTML = `
+                searchInput.addEventListener("input", (e) => {
+                    const keyword = e.target.value.toLowerCase();
+                    const filteredData = allAlternatifData.filter(item =>
+                        item.kode_alternatif.toLowerCase().includes(keyword) ||
+                        item.nama_periode.toLowerCase().includes(keyword) ||
+                        (item.deskripsi && item.deskripsi.toLowerCase().includes(keyword))
+                    );
+                    renderAlternatifTable(filteredData);
+                });
+
+                btnDeleteAll.addEventListener("click", async() => {
+                    if (allAlternatifData.length === 0) return showToast("Data kosong.", "error");
+                    const confirmed = await showConfirm("Hapus Semua?", "PERINGATAN: Semua data alternatif akan dihapus permanen.");
+                    if (!confirmed) return;
+
+                    const originalContent = btnDeleteAll.innerHTML;
+                    btnDeleteAll.disabled = true;
+                    btnDeleteAll.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+
+                    try {
+                        const deletePromises = allAlternatifData.map(item =>
+                            fetch(`${API_BASE_URL}/alternatif/${item.id}`, {
+                                method: 'DELETE',
+                                headers: { Authorization: `Bearer ${token}` }
+                            })
+                        );
+                        await Promise.all(deletePromises);
+                        showToast("Data berhasil di-reset!", "success");
+                        await loadAlternatifData();
+                    } catch (err) {
+                        console.error(err);
+                        showToast("Gagal menghapus sebagian data.", "error");
+                        await loadAlternatifData();
+                    } finally {
+                        btnDeleteAll.disabled = false;
+                        btnDeleteAll.innerHTML = originalContent;
+                    }
+                });
+
+                // === FUNCTIONS ===
+                async function loadAlternatifData() {
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } });
+                        const data = await res.json();
+                        allAlternatifData = (data.data || data || []).sort((a, b) => a.id - b.id);
+                        badgeTotal.innerText = allAlternatifData.length;
+                        badgeTotal.classList.remove('hidden');
+                        renderAlternatifTable(allAlternatifData);
+                    } catch (err) {
+                        console.error(err);
+                        tableContainer.innerHTML = `<div class="p-10 text-center text-red-500">Gagal terhubung ke server.</div>`;
+                    }
+                }
+
+                function renderAlternatifTable(data) {
+                    if (!data.length) {
+                        tableContainer.innerHTML = `
                 <div class="flex flex-col items-center justify-center py-12 text-gray-400">
                     <div class="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-full mb-3">
                         <i class="bi bi-folder2-open text-3xl text-gray-400 dark:text-gray-500"></i>
                     </div>
                     <p class="text-sm font-medium">Tidak ada data ditemukan.</p>
                 </div>`;
-                return;
-            }
+                        return;
+                    }
 
-            const rows = data.map((a, index) => `
+                    const rows = data.map((a, index) => `
                 <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-center w-16 font-mono">${index + 1}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -1187,7 +1189,7 @@ window.loadContent = async (page) => {
     }
 
     // ======================
-    // PERHITUNGAN SAW (Lengkap: Tabs, Cetak Rapi, Grafik)
+    // PERHITUNGAN SAW (FIXED: Analisis + Cetak + Grafik)
     // ======================
     if (page === "perhitungan") {
         
@@ -1290,6 +1292,10 @@ window.loadContent = async (page) => {
 
                         <div id="tab-ranking" class="tab-pane block">
                             <h3 class="print-title hidden print:block">Tabel Peringkat Akhir</h3>
+                            
+                            <div id="juara-kriteria-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 no-print">
+                                </div>
+
                             <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
                                 <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 font-bold text-gray-700 dark:text-gray-300 text-sm no-print flex justify-between items-center">
                                     <span>Tabel Peringkat</span>
@@ -1299,6 +1305,7 @@ window.loadContent = async (page) => {
                                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id="table-ranking"></table>
                                 </div>
                             </div>
+
                             <div id="chart-section-print" class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                                 <h3 class="print-title hidden print:block text-center mb-4">Grafik Nilai Preferensi</h3>
                                 <h4 class="font-bold text-lg mb-4 text-gray-800 dark:text-white flex items-center gap-2 no-print">
@@ -1308,9 +1315,33 @@ window.loadContent = async (page) => {
                                     <canvas id="miniChart"></canvas>
                                 </div>
                             </div>
+
                             <div class="mt-6 flex justify-end gap-3 no-print">
                                 <button onclick="printReport(false)" class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 rounded-lg font-semibold transition flex items-center gap-2"><i class="bi bi-table"></i> Cetak Tabel Saja</button>
                                 <button onclick="printReport(true)" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-md transition flex items-center gap-2"><i class="bi bi-bar-chart-line-fill"></i> Cetak Lengkap (+Grafik)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-detail-analisis" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in no-print">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-indigo-600">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="bi bi-search"></i> Analisis Mendalam: <span id="modal-detail-title" class="underline decoration-wavy"></span>
+                        </h3>
+                        <button onclick="document.getElementById('modal-detail-analisis').classList.add('hidden')" class="text-white/80 hover:text-white text-2xl transition">&times;</button>
+                    </div>
+                    <div class="p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                            <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 h-[350px] relative">
+                                <canvas id="radarChartCanvas"></canvas>
+                            </div>
+                            <div class="space-y-4">
+                                <h4 class="font-bold text-gray-800 dark:text-white border-b pb-2">Kekuatan & Kelemahan</h4>
+                                <ul id="modal-detail-list" class="space-y-2 text-sm text-gray-600 dark:text-gray-300 h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -1338,6 +1369,134 @@ window.loadContent = async (page) => {
             document.getElementById(targetId).classList.remove('hidden');
         };
 
+        // --- FUNGSI 1: Render Kartu Juara per Kriteria ---
+        window.renderBestCriteriaCards = (data) => {
+            const container = document.getElementById('juara-kriteria-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const kriteria = data.kriteriaData;
+            const values = data.initialValues;
+
+            kriteria.forEach(k => {
+                let bestAlt = null;
+                let bestVal = (k.tipe.toLowerCase() === 'benefit') ? -Infinity : Infinity;
+
+                values.forEach(row => {
+                    const val = parseFloat(row[k.kode]);
+                    if (k.tipe.toLowerCase() === 'benefit') {
+                        if (val > bestVal) { bestVal = val; bestAlt = row.alternatif_nama; }
+                    } else {
+                        if (val < bestVal) { bestVal = val; bestAlt = row.alternatif_nama; }
+                    }
+                });
+
+                const borderClass = k.tipe.toLowerCase() === 'benefit' ? 'border-green-500' : 'border-orange-500';
+                const icon = k.tipe.toLowerCase() === 'benefit' ? 'bi-graph-up-arrow text-green-500' : 'bi-graph-down-arrow text-orange-500';
+
+                container.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border-l-4 ${borderClass} relative overflow-hidden group hover:shadow-md transition">
+                        <div class="absolute right-2 top-2 opacity-10 group-hover:opacity-20 transition">
+                            <i class="bi ${icon} text-4xl"></i>
+                        </div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">${k.nama}</p>
+                        <h4 class="text-lg font-bold text-gray-800 dark:text-white truncate" title="${bestAlt}">${bestAlt}</h4>
+                        <div class="flex justify-between items-end mt-2">
+                            <span class="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">Nilai: ${bestVal}</span>
+                            <span class="text-[10px] text-${k.tipe === 'Benefit'?'green':'orange'}-500 font-bold border border-${k.tipe === 'Benefit'?'green':'orange'}-200 px-1 rounded">${k.tipe}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        };
+
+        // --- FUNGSI 2: Buka Modal Detail & Gambar Radar ---
+        window.openDetailAnalysis = (altId) => {
+            if (!globalCalculationData) {
+                showToast("Data perhitungan tidak ditemukan. Silakan hitung ulang.", "error");
+                return;
+            }
+
+            const altName = globalCalculationData.ranking.find(r => r.alternatif_id == altId).alternatif_nama;
+            const normRow = globalCalculationData.normalizedValues.find(r => r.alternatif_id == altId);
+            const initRow = globalCalculationData.initialValues.find(r => r.alternatif_id == altId);
+            const kriteria = globalCalculationData.kriteriaData;
+
+            document.getElementById('modal-detail-title').innerText = altName;
+            document.getElementById('modal-detail-analisis').classList.remove('hidden');
+            document.getElementById('modal-detail-analisis').classList.add('flex');
+
+            const listContainer = document.getElementById('modal-detail-list');
+            listContainer.innerHTML = '';
+
+            kriteria.forEach(k => {
+                const nVal = normRow[k.kode]; // 0 - 1
+                const origVal = initRow[k.kode];
+                
+                let status, color;
+                if (nVal >= 0.8) { status = "Sangat Unggul"; color = "text-green-600 bg-green-50 border-green-200"; }
+                else if (nVal >= 0.6) { status = "Baik"; color = "text-blue-600 bg-blue-50 border-blue-200"; }
+                else if (nVal >= 0.4) { status = "Cukup"; color = "text-yellow-600 bg-yellow-50 border-yellow-200"; }
+                else { status = "Lemah"; color = "text-red-600 bg-red-50 border-red-200"; }
+
+                listContainer.innerHTML += `
+                    <li class="flex items-center justify-between p-3 rounded-lg border ${color} dark:bg-gray-800 dark:border-gray-600">
+                        <div>
+                            <span class="block text-xs font-bold text-gray-500 uppercase">${k.nama}</span>
+                            <span class="font-bold text-gray-800 dark:text-gray-200">Nilai: ${origVal}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-xs font-bold ${color.split(' ')[0]}">${status}</span>
+                            <div class="w-20 h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                                <div class="h-full bg-current opacity-70" style="width: ${nVal*100}%"></div>
+                            </div>
+                        </div>
+                    </li>
+                `;
+            });
+
+            const ctx = document.getElementById('radarChartCanvas').getContext('2d');
+            if (myRadarChart) myRadarChart.destroy();
+
+            const labels = kriteria.map(k => k.nama);
+            const dataValues = kriteria.map(k => normRow[k.kode]);
+
+            myRadarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Performa (Normalisasi 0-1)',
+                        data: dataValues,
+                        fill: true,
+                        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                        borderColor: 'rgb(99, 102, 241)',
+                        pointBackgroundColor: 'rgb(99, 102, 241)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(99, 102, 241)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0,0,0,0.1)' },
+                            grid: { color: 'rgba(0,0,0,0.1)' },
+                            pointLabels: {
+                                font: { size: 11, weight: 'bold' },
+                                color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#4b5563'
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 1
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        };
+
         const btnRun = document.getElementById("run-saw-btn");
         btnRun.addEventListener("click", async () => {
             document.getElementById("state-initial").classList.add("hidden");
@@ -1349,7 +1508,9 @@ window.loadContent = async (page) => {
                 const res = await fetch(`${API_BASE_URL}/perhitungan/hitung`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message);
-                renderAllTables(data);
+                
+                renderAllTables(data); // Render semua tabel dan grafik
+                
                 document.getElementById("state-loading").classList.add("hidden");
                 document.getElementById("state-result").classList.remove("hidden");
                 switchTab('tab-ranking'); 
@@ -1365,6 +1526,10 @@ window.loadContent = async (page) => {
         });
 
         function renderAllTables(data) {
+            // === PERBAIKAN PENTING: SIMPAN DATA KE VARIABEL GLOBAL ===
+            globalCalculationData = data; 
+            // =========================================================
+
             const { kriteriaData, initialValues, normalizedValues, weightedNormalizedValues, ranking } = data;
             const headers = kriteriaData.map(k => `<th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50 dark:bg-gray-700 dark:text-gray-300">${k.nama} (${k.kode})</th>`).join('');
             const commonHeader = `<thead class="bg-gray-50 dark:bg-gray-700"><tr><th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase w-10">No</th><th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase w-48">Alternatif</th>${headers}</tr></thead>`;
@@ -1378,15 +1543,30 @@ window.loadContent = async (page) => {
             document.getElementById('table-norm').innerHTML = commonHeader + `<tbody>${createRows(normalizedValues)}</tbody>`;
             document.getElementById('table-weight').innerHTML = commonHeader + `<tbody>${createRows(weightedNormalizedValues)}</tbody>`;
 
+            // Render Table Ranking dengan Tombol Aksi
             const rankingRows = ranking.map(r => `
                 <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-green-50 dark:hover:bg-green-900/20 ${r.rank === 1 ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500' : ''}">
                     <td class="px-6 py-4 text-center"><span class="rank-badge w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${r.rank <= 3 ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'}">${r.rank}</span></td>
-                    <td class="px-6 py-4 font-bold text-gray-800 dark:text-white">${r.alternatif_nama}</td>
+                    <td class="px-6 py-4 font-bold text-gray-800 dark:text-white">
+                        ${r.alternatif_nama}
+                        ${r.rank === 1 ? '<i class="bi bi-star-fill text-yellow-400 ml-2"></i>' : ''}
+                    </td>
                     <td class="px-6 py-4 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400 text-lg">${r.nilai.toFixed(4)}</td>
+                    
+                    <td class="px-6 py-4 text-right no-print">
+                        <button onclick="openDetailAnalysis(${r.alternatif_id})" class="text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded-full font-bold transition flex items-center justify-end gap-1 ml-auto">
+                            <i class="bi bi-search"></i> Analisa
+                        </button>
+                    </td>
                 </tr>
             `).join('');
-            document.getElementById('table-ranking').innerHTML = `<thead class="bg-gray-50 dark:bg-gray-700"><tr><th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase w-20">Rank</th><th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Alternatif</th><th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Total Skor (V)</th></tr></thead><tbody>${rankingRows}</tbody>`;
+
+            document.getElementById('table-ranking').innerHTML = `<thead class="bg-gray-50 dark:bg-gray-700"><tr><th class="px-6 py-3 text-center w-20">Rank</th><th class="px-6 py-3 text-left">Alternatif</th><th class="px-6 py-3 text-right">Total Skor (V)</th><th class="px-6 py-3 text-right no-print">Detail</th></tr></thead><tbody>${rankingRows}</tbody>`;
+            
             renderMiniChart(data);
+            
+            // Panggil Fungsi Render Kartu Juara
+            renderBestCriteriaCards(data);
         }
 
         function renderMiniChart(fullData) {
@@ -1425,136 +1605,239 @@ window.loadContent = async (page) => {
     }
 
     // ======================
-    // BACKUP DATABASE (SUPERADMIN)
+    // BACKUP DATABASE (DENGAN PROTEKSI PASSWORD DI AWAL)
     // ======================
     if (page === "backup-db") {
-      if (user.role !== "superadmin") {
-        container.innerHTML = '<p class="text-red-500 p-4 bg-red-100 rounded-lg shadow-md">Akses ditolak. Hanya superadmin.</p>';
-        return;
-      }
-      container.innerHTML = `
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Backup Data</h2>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                 <p class="text-gray-700 dark:text-gray-300 mb-2">*Untuk menjaga dari kerusakan data, data hilang dan hal-hal yang tidak diinginkan silahkan melakukan backup berkala.</p>
-                 <p class="text-gray-700 dark:text-gray-300 mb-4">Untuk membackup data silahkan klik tombol dibawah.</p>
-                 <button id="btn-create-backup" class="bg-blue-600 text-white px-5 py-2 rounded-lg shadow-md hover:bg-blue-700 font-semibold transition-all duration-200 flex items-center justify-center">
-                    <i class="bi bi-plus-lg mr-2"></i> Back Up Data
-                </button>
-            </div>
-            <div id="backupTableContainer" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead class="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama File</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tanggal</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Waktu</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Opsi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="backup-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            <tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">Memuat data backup...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+        if (user.role !== "superadmin") return;
+
+        // 1. TAMPILKAN STATE TERKUNCI
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-[500px] text-gray-400 animate-pulse">
+                <i class="bi bi-database-lock text-6xl mb-4"></i>
+                <p class="text-lg font-semibold">Menunggu Verifikasi Keamanan...</p>
             </div>
         `;
-      await loadBackupTable();
-      document.getElementById("btn-create-backup").addEventListener("click", async (e) => {
-        const btn = e.currentTarget;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner mr-2"></span> Sedang memproses...';
-        try {
-          const res = await fetch(`${API_BASE_URL}/backup/database`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const result = await res.json();
-          if (!res.ok) throw new Error(result.message);
-          showToast(result.message || 'Backup berhasil dibuat!');
-          await loadBackupTable();
-        } catch (err) {
-          console.error('Gagal membuat backup:', err);
-          showToast(`Error: ${err.message}`, 'error');
-        } finally {
-          btn.disabled = false;
-          btn.innerHTML = '<i class="bi bi-plus-lg mr-2"></i> Back Up Data';
-        }
-      });
-      return;
+
+        // 2. PANGGIL GATEKEEPER
+        promptAccessVerification(async () => {
+            // --- KODE ASLI BACKUP DIMASUKKAN KE SINI ---
+            container.innerHTML = `
+                <div class="flex justify-between items-center mb-4 animate-fade-in">
+                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Backup Data</h2>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                     <p class="text-gray-700 dark:text-gray-300 mb-4">Mode Aman Aktif. Silakan kelola backup database.</p>
+                     <button id="btn-create-backup" class="bg-blue-600 text-white px-5 py-2 rounded-lg shadow-md hover:bg-blue-700 font-semibold transition flex items-center justify-center">
+                        <i class="bi bi-plus-lg mr-2"></i> Buat Backup Baru
+                    </button>
+                </div>
+                <div id="backupTableContainer" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full"><tbody id="backup-table-body"></tbody></table>
+                    </div>
+                </div>
+            `;
+
+            await loadBackupTable();
+
+            document.getElementById("btn-create-backup").addEventListener("click", async (e) => {
+                // Di sini TIDAK PERLU minta password lagi karena sudah diverifikasi di awal masuk halaman
+                // Langsung eksekusi backup
+                const btn = e.currentTarget;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-2"></span> Memproses...';
+                try {
+                    const res = await fetch(`${API_BASE_URL}/backup/database`, { 
+                        method: 'POST', 
+                        headers: { Authorization: `Bearer ${token}` } // Tidak perlu header password lagi jika endpoint backup biasa
+                    });
+                    const result = await res.json();
+                    if (!res.ok) throw new Error(result.message);
+                    showToast(result.message || 'Backup berhasil dibuat!');
+                    await loadBackupTable();
+                } catch (err) {
+                    showToast(`Error: ${err.message}`, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-plus-lg mr-2"></i> Buat Backup Baru';
+                }
+            });
+        });
+        return;
     }
 
-    // ======================
-    // MANAJEMEN ADMIN
-    // ======================
+    // ============================================================
+    // 1. MANAJEMEN ADMIN (LENGKAP DENGAN GATEKEEPER & CRUD)
+    // ============================================================
     if (page === "manajemen-admin") {
-      if (user.role !== "superadmin") {
-        container.innerHTML =
-          '<p class="text-red-500 p-4 bg-red-100 rounded-lg shadow-md">Akses ditolak. Hanya superadmin.</p>';
-        return;
-      }
-      container.innerHTML = `
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Manajemen Admin</h2>
-                <button id="btnAddAdmin" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 shadow-sm font-medium">
-                  <i class="bi bi-plus-lg mr-1"></i> Tambah Admin
-                </button>
-            </div>
-            <div id="adminTableContainer" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden"></div>
-            `;
-      await loadAdminTable();
-      async function loadAdminTable() {
-        const tableContainer = document.getElementById("adminTableContainer");
-        tableContainer.innerHTML = `<div class="p-4 text-center text-gray-500 dark:text-gray-400">Memuat data admin...</div>`;
-        try {
-          const res = await fetch(`${API_BASE_URL}/admin`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const admins = await res.json();
-          if (!Array.isArray(admins)) throw new Error("Data admin tidak valid");
-
-          const uniqueRoles = [...new Set(admins.map(a => a.role))];
-          const roleOptions = uniqueRoles.map(role => ({
-            value: role,
-            label: role.charAt(0).toUpperCase() + role.slice(1)
-          }));
-
-          const rows = admins
-            .map(
-              (a) => `
-                    <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${a.username}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${a.role}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right space-x-2">
-                        <button onclick='showEditAdmin(${a.id},"${a.username}","${a.role}", ${JSON.stringify(roleOptions)})' class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors">Edit</button>
-                        <button onclick="deleteAdminClient(${a.id})" class="px-3 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors">Hapus</button>
-                      </td>
-                    </tr>`
-            )
-            .join("");
-          tableContainer.innerHTML = `
-                  <table class="min-w-full">
-                    <thead class="bg-gray-50 dark:bg-gray-700">
-                      <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Username</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
-                  </table>
-                `;
-          document.getElementById("btnAddAdmin").onclick = () => showAddAdminModal(roleOptions);
-        } catch (err) {
-          showToast(`Gagal memuat data admin: ${err.message}`, 'error');
-          tableContainer.innerHTML = `<p class="text-red-500 p-4">Gagal memuat data admin.</p>`;
+        if (user.role !== "superadmin") {
+            container.innerHTML = `<div class="flex flex-col items-center justify-center h-64 text-red-500"><i class="bi bi-shield-lock-fill text-5xl mb-3"></i><p class="font-bold text-lg">Akses Ditolak</p></div>`;
+            return;
         }
-      }
-      await loadAdminTable();
-      return;
+
+        // Tampilkan State Terkunci
+        container.innerHTML = `<div class="flex flex-col items-center justify-center h-[500px] text-gray-400 animate-pulse"><i class="bi bi-lock-fill text-6xl mb-4"></i><p class="text-lg font-semibold">Menunggu Verifikasi Keamanan...</p></div>`;
+
+        // PANGGIL GATEKEEPER (Password Verifikasi di Awal)
+        promptAccessVerification(async () => {
+            container.innerHTML = `
+                <div class="flex justify-between items-center mb-6 animate-fade-in">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Manajemen Admin</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Mode Aman Aktif <i class="bi bi-shield-check text-green-500"></i></p>
+                    </div>
+                    <button id="btnAddAdmin" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 shadow-lg font-bold transition flex items-center gap-2">
+                        <i class="bi bi-person-plus-fill text-lg"></i> Tambah Admin
+                    </button>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div id="adminTableContainer" class="overflow-x-auto"></div>
+                </div>
+            `;
+
+            // --- FUNGSI INTERNAL: LOAD TABEL ---
+            const loadTable = async () => {
+                const tableDiv = document.getElementById("adminTableContainer");
+                try {
+                    const res = await fetch(`${API_BASE_URL}/admin`, { headers: { Authorization: `Bearer ${token}` } });
+                    const admins = await res.json();
+                    const rows = admins.map((a, i) => {
+                        const isSuper = a.role === 'superadmin';
+                        return `
+                            <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td class="px-6 py-4 text-center text-sm font-mono">${i + 1}</td>
+                                <td class="px-6 py-4 font-bold text-gray-800 dark:text-white">${a.username}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold ${isSuper ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">
+                                        ${isSuper ? 'SUPER ADMIN' : 'ADMIN STAFF'}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    ${isSuper 
+                                        ? `<button onclick='showEditSuperAdminModal("${a.username}")' class="px-3 py-1.5 bg-yellow-500 text-white text-xs font-bold rounded-lg shadow-sm">Update Akun</button>`
+                                        : `<div class="flex justify-end gap-2">
+                                            <button onclick='showEditStaffModal(${JSON.stringify(a)})' class="bg-blue-100 text-blue-600 p-2 rounded-lg"><i class="bi bi-pencil-fill"></i></button>
+                                            <button onclick='deleteAdminClient(${a.id}, "${a.username}")' class="bg-red-100 text-red-600 p-2 rounded-lg"><i class="bi bi-trash-fill"></i></button>
+                                           </div>`
+                                    }
+                                </td>
+                            </tr>`;
+                    }).join("");
+                    tableDiv.innerHTML = `<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700"><thead class="bg-gray-50 dark:bg-gray-700"><tr><th class="px-6 py-3">No</th><th class="px-6 py-3 text-left">Username</th><th class="px-6 py-3 text-left">Role</th><th class="px-6 py-3 text-right">Aksi</th></tr></thead><tbody class="bg-white dark:bg-gray-800">${rows}</tbody></table>`;
+                } catch (e) { tableDiv.innerHTML = `<p class="p-4 text-red-500 text-center">Gagal memuat data.</p>`; }
+            };
+
+            await loadTable();
+
+            // --- FUNGSI MODAL: TAMBAH ADMIN ---
+            window.showAddAdminModal = async () => {
+                const result = await showPrompt({
+                    title: "Tambah Staff Admin",
+                    fields: [
+                        { id: "username", label: "Username Baru", required: true, placeholder: "Contoh: admin_gudang" },
+                        { id: "password", label: "Password Awal", type: "password", required: true, placeholder: "Buat password..." }
+                    ]
+                });
+                if (!result) return;
+                try {
+                    const res = await fetch(`${API_BASE_URL}/admin`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ ...result, role: 'admin' }),
+                    });
+                    if (!res.ok) throw new Error((await res.json()).message);
+                    showToast("Admin ditambahkan", "success"); loadTable();
+                } catch (err) { showToast(err.message, "error"); }
+            };
+
+            // --- FUNGSI MODAL: EDIT STAFF (TANPA PASSWORD LAMA) ---
+            window.showEditStaffModal = (staff) => {
+                const modal = document.getElementById("modal-container");
+                modal.classList.remove("hidden"); modal.classList.add("flex");
+                modal.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md m-auto overflow-hidden">
+                        <form id="staffEditForm">
+                            <div class="p-5 border-b font-bold dark:text-white bg-blue-50 dark:bg-blue-900/20">Edit Admin Staff</div>
+                            <div class="p-6 space-y-4">
+                                <input type="hidden" id="st_id" value="${staff.id}">
+                                <div><label class="block text-sm font-bold mb-1">Username</label><input type="text" id="st_username" value="${staff.username}" class="w-full border rounded-lg p-2 dark:bg-gray-700 dark:text-white" required></div>
+                                <div><label class="block text-sm font-bold mb-1">Reset Password (Opsional)</label><input type="password" id="st_password" class="w-full border rounded-lg p-2 dark:bg-gray-700 dark:text-white" placeholder="Isi untuk ganti"></div>
+                            </div>
+                            <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t flex justify-end gap-2">
+                                <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded-lg">Batal</button>
+                                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold">Simpan</button>
+                            </div>
+                        </form>
+                    </div>`;
+                document.getElementById("staffEditForm").onsubmit = async (e) => {
+                    e.preventDefault();
+                    const payload = { username: document.getElementById("st_username").value, role: 'admin' };
+                    const pass = document.getElementById("st_password").value;
+                    if(pass) payload.password = pass;
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/admin/${document.getElementById("st_id").value}`, { 
+                            method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload)
+                        });
+                        if(!res.ok) throw new Error((await res.json()).message);
+                        showToast("Berhasil update"); modal.classList.add("hidden"); loadTable();
+                    } catch (err) { showToast(err.message, "error"); }
+                };
+            };
+
+            // --- FUNGSI MODAL: EDIT SUPER ADMIN (WAJIB PASSWORD LAMA) ---
+            window.showEditSuperAdminModal = (currentUsername) => {
+                const modal = document.getElementById("modal-container");
+                modal.classList.remove("hidden"); modal.classList.add("flex");
+                modal.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md m-auto overflow-hidden">
+                        <form id="superEditForm">
+                            <div class="p-5 border-b font-bold dark:text-white bg-yellow-50 dark:bg-yellow-900/20">Update Super Admin</div>
+                            <div class="p-6 space-y-4">
+                                <div><label class="block text-sm font-bold mb-1">Username</label><input type="text" id="sa_username" value="${currentUsername}" class="w-full border rounded-lg p-2 dark:bg-gray-700 dark:text-white" required></div>
+                                <div class="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                                    <label class="block text-sm font-bold text-red-600 mb-1">Password Lama (Wajib)</label>
+                                    <input type="password" id="sa_oldPass" class="w-full border border-red-200 rounded-lg p-2 dark:bg-gray-700" required>
+                                </div>
+                                <div><label class="block text-sm font-bold mb-1">Password Baru</label><input type="password" id="sa_newPass" class="w-full border rounded-lg p-2 dark:bg-gray-700 dark:text-white" placeholder="Kosongkan jika tidak diganti"></div>
+                            </div>
+                            <div class="p-4 bg-gray-50 dark:bg-gray-900 border-t flex justify-end gap-2">
+                                <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded-lg">Batal</button>
+                                <button type="submit" class="px-4 py-2 bg-yellow-500 text-white rounded-lg font-bold">Update & Relogin</button>
+                            </div>
+                        </form>
+                    </div>`;
+                document.getElementById("superEditForm").onsubmit = async (e) => {
+                    e.preventDefault();
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/auth/profile`, { 
+                            method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ 
+                                username: document.getElementById("sa_username").value, 
+                                oldPassword: document.getElementById("sa_oldPass").value, 
+                                newPassword: document.getElementById("sa_newPass").value 
+                            })
+                        });
+                        if(!res.ok) throw new Error((await res.json()).message);
+                        showToast("Berhasil! Silakan Login Ulang");
+                        setTimeout(() => { localStorage.clear(); window.location.replace("login.html"); }, 1500);
+                    } catch (err) { showToast(err.message, "error"); }
+                };
+            };
+
+            // --- FUNGSI HAPUS ADMIN ---
+            window.deleteAdminClient = async (id, username) => {
+                if (await showConfirm("Hapus Admin?", `Hapus akun <b>${username}</b>?`)) {
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/admin/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+                        if(!res.ok) throw new Error("Gagal hapus");
+                        showToast("Admin dihapus"); loadTable();
+                    } catch(err) { showToast(err.message, "error"); }
+                }
+            };
+
+            document.getElementById("btnAddAdmin").onclick = () => showAddAdminModal();
+        });
+        return;
     }
 
     // ======================
@@ -1882,85 +2165,150 @@ function showPrompt({ title, fields }) {
 }
 
 
+/// ============================
+// FUNGSI TAMBAH ADMIN (MODIFIKASI)
 // ============================
-// FUNGSI ADMIN (MENGGUNAKAN MODAL BARU)
-// ============================
-async function showAddAdminModal(roleOptions) {
-  const options = roleOptions || [
-    { value: "admin", label: "Admin" },
-    { value: "superadmin", label: "Super Admin" }
-  ];
-  const result = await showPrompt({
-    title: "Tambah Admin Baru",
-    fields: [
-      { id: "username", label: "Username Baru", required: true },
-      { id: "password", label: "Password", type: "password", required: true },
-      { id: "role", label: "Role", type: "select", value: "admin", required: true, options: options }
-    ]
-  });
-  if (!result) return;
-  try {
-    const res = await fetch(`${API_BASE_URL}/admin`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(result),
+async function showAddAdminModal() {
+    // Tampilkan Prompt hanya Username & Password
+    const result = await showPrompt({
+        title: "Tambah Admin Baru",
+        fields: [
+            { id: "username", label: "Username Admin", required: true, placeholder: "Masukkan username" },
+            { id: "password", label: "Password", type: "password", required: true, placeholder: "Buat password awal" }
+        ]
     });
-    const j = await res.json();
-    if (!res.ok) throw new Error(j.message);
-    showToast(j.message || "Berhasil");
-    loadContent("manajemen-admin");
-  } catch (err) {
-    showToast(err.message, "error");
-  }
+
+    if (!result) return;
+
+    // OTOMATIS SET ROLE JADI 'admin'
+    // Superadmin tidak perlu memilih role lagi
+    const payload = {
+        username: result.username,
+        password: result.password,
+        role: 'admin' 
+    };
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/admin`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify(payload),
+        });
+        
+        const j = await res.json();
+        if (!res.ok) throw new Error(j.message);
+        
+        showToast("Admin baru berhasil ditambahkan!", "success");
+        loadContent("manajemen-admin"); // Refresh halaman
+    } catch (err) {
+        showToast(err.message, "error");
+    }
 }
 
-async function showEditAdmin(id, username, role, roleOptions) {
-  const options = roleOptions || [
-    { value: "admin", label: "Admin" },
-    { value: "superadmin", label: "Super Admin" }
-  ];
-  const result = await showPrompt({
-    title: "Edit Admin",
-    fields: [
-      { id: "username", label: "Username", value: username, required: true },
-      { id: "role", label: "Role", type: "select", value: role, required: true, options: options },
-      { id: "password", label: "Password Baru (Opsional)", placeholder: "Kosongkan jika tidak diubah", type: "password" },
-    ]
-  });
-  if (!result) return;
-  const payload = { username: result.username, role: result.role };
-  if (result.password) { payload.password = result.password; }
-  try {
-    const res = await fetch(`${API_BASE_URL}/admin/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(payload),
-    });
-    const j = await res.json();
-    if (!res.ok) throw new Error(j.message);
-    showToast(j.message || "Berhasil");
-    loadContent("manajemen-admin");
-  } catch (err) {
-    showToast(err.message, "error");
-  }
-}
+// ============================
+// MODAL EDIT PROFIL (GANTI PASSWORD)
+// ============================
+window.showProfileModal = () => {
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const modal = document.getElementById("modal-container");
+    
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
 
-async function deleteAdminClient(id) {
-  const confirmed = await showConfirm("Hapus Admin", "Yakin ingin menghapus admin ini?");
-  if (!confirmed) return;
-  try {
-    const res = await fetch(`${API_BASE_URL}/admin/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const j = await res.json();
-    if (!res.ok) throw new Error(j.message);
-    showToast(j.message || "Berhasil");
-    loadContent("manajemen-admin");
-  } catch (err) {
-    showToast(err.message, "error");
-  }
-}
+    modal.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-auto overflow-hidden transform transition-all scale-100 animate-fade-in">
+            <div class="p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
+                <h3 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                    <i class="bi bi-shield-lock-fill text-indigo-600"></i> Keamanan Akun
+                </h3>
+                <button onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
+            </div>
+            
+            <form id="profileForm" class="p-6 space-y-4">
+                <div class="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg flex items-center gap-3 border border-indigo-100 dark:border-indigo-800">
+                    <div class="w-10 h-10 rounded-full bg-indigo-200 dark:bg-indigo-700 flex items-center justify-center text-indigo-700 dark:text-white font-bold">
+                        ${currentUser.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <p class="text-xs text-indigo-500 uppercase font-bold">Username Anda</p>
+                        <p class="text-sm font-bold text-gray-800 dark:text-white">${currentUser.username}</p>
+                    </div>
+                </div>
+
+                <input type="hidden" id="profUser" value="${currentUser.username}">
+
+                <hr class="border-gray-200 dark:border-gray-700 border-dashed">
+                <p class="text-xs text-gray-500 dark:text-gray-400 text-center">Isi kolom di bawah jika ingin mengganti password</p>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase mb-1">Password Lama</label>
+                    <div class="relative">
+                        <input type="password" id="profOldPass" class="w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition" placeholder="Konfirmasi password saat ini">
+                        <i class="bi bi-key absolute right-3 top-2.5 text-gray-400"></i>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase mb-1">Password Baru</label>
+                    <div class="relative">
+                        <input type="password" id="profNewPass" class="w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition" placeholder="Password baru">
+                        <i class="bi bi-lock absolute right-3 top-2.5 text-gray-400"></i>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-2">
+                    <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition font-medium text-sm">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold shadow-md transition flex items-center gap-2 text-sm">
+                        <i class="bi bi-check-circle"></i> Simpan Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.getElementById("profileForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector("button[type='submit']");
+        const originalText = btn.innerHTML;
+        
+        const username = document.getElementById("profUser").value;
+        const oldPassword = document.getElementById("profOldPass").value;
+        const newPassword = document.getElementById("profNewPass").value;
+
+        if(!oldPassword || !newPassword) {
+            showToast("Harap isi password lama dan password baru.", "error");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Loading...`;
+
+        try {
+            // Panggil API Auth Controller (updateProfile)
+            const res = await fetch(`${API_BASE_URL}/auth/profile`, { 
+                method: "PUT",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ username, oldPassword, newPassword })
+            });
+            
+            const json = await res.json();
+            if(!res.ok) throw new Error(json.message);
+
+            showToast("Password berhasil diganti! Silakan login ulang.", "success");
+            document.getElementById('modal-container').classList.add('hidden');
+
+            // Logout otomatis
+            setTimeout(() => {
+                localStorage.clear();
+                window.location.replace("login.html");
+            }, 2000);
+
+        } catch (err) {
+            showToast(err.message, "error");
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    };
+};
 
 // ============================
 // FUNGSI KHUSUS BACKUP (UPDATED)
@@ -2194,6 +2542,43 @@ function renderDashboardChart(rankingData) {
 }
 
 // ============================
+// FUNGSI TAMBAH ADMIN (Hanya Admin Biasa)
+// ============================
+async function showAddAdminModal() {
+    const result = await showPrompt({
+        title: "Tambah Staff Admin",
+        fields: [
+            { id: "username", label: "Username Baru", required: true, placeholder: "Contoh: admin_gudang" },
+            { id: "password", label: "Password Awal", type: "password", required: true, placeholder: "Buat password..." }
+        ]
+    });
+
+    if (!result) return;
+
+    const payload = {
+        username: result.username,
+        password: result.password,
+        role: 'admin' // <--- DIKUNCI: Selalu admin biasa
+    };
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/admin`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify(payload),
+        });
+        
+        const j = await res.json();
+        if (!res.ok) throw new Error(j.message);
+        
+        showToast("Admin staff berhasil ditambahkan.", "success");
+        loadContent("manajemen-admin");
+    } catch (err) {
+        showToast(err.message, "error");
+    }
+}
+
+// ============================
 // LOGIKA CHATBOT (STYLE BARU)
 // ============================
 
@@ -2403,6 +2788,230 @@ function saveChatConfig(newConfig) {
 }
 
 // ==========================================
+// FUNGSI GATEKEEPER (PENJAGA HALAMAN) verifikasi 2 langkah
+// ==========================================
+function promptAccessVerification(onSuccess) {
+    const modal = document.getElementById("modal-container");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+
+    modal.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm m-auto transform transition-all scale-100 overflow-hidden border border-red-100 dark:border-red-900/30 animate-fade-in">
+            <div class="p-6 text-center">
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/20 mb-4">
+                    <i class="bi bi-shield-lock-fill text-3xl text-red-600 dark:text-red-500"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Area Terbatas</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    Halaman ini dilindungi. Masukkan password Super Admin untuk melanjutkan.
+                </p>
+                
+                <form id="gatekeeperForm" class="space-y-4">
+                    <div class="relative">
+                        <input type="password" id="gatePass" 
+                            class="w-full pl-4 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white transition shadow-sm" 
+                            placeholder="Password Anda..." required autofocus>
+                        <i class="bi bi-key-fill absolute right-3 top-3.5 text-gray-400"></i>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button type="button" id="btnCancelGate" class="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 transition">
+                            Batal
+                        </button>
+                        <button type="submit" id="btnSubmitGate" class="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-200 dark:shadow-none transition">
+                            Buka Akses
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    setTimeout(() => document.getElementById("gatePass").focus(), 100);
+
+    // Handle Cancel (Balik ke Dashboard)
+    document.getElementById("btnCancelGate").onclick = () => {
+        modal.classList.add("hidden");
+        loadContent('dashboard'); // Tendang balik ke dashboard
+    };
+
+    // Handle Submit
+    document.getElementById("gatekeeperForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const password = document.getElementById("gatePass").value;
+        const btn = document.getElementById("btnSubmitGate");
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cek...';
+
+        try {
+            // Cek Password ke Backend
+            const res = await fetch(`${API_BASE_URL}/auth/verify-password`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ password })
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                // SUKSES! Tutup modal dan jalankan fungsi halaman
+                modal.classList.add("hidden");
+                showToast("Akses diberikan!", "success");
+                onSuccess(); // <--- INI KUNCINYA (Load Konten)
+            } else {
+                showToast("Password salah! Akses ditolak.", "error");
+                btn.disabled = false;
+                btn.innerHTML = 'Buka Akses';
+                document.getElementById("gatePass").value = "";
+                document.getElementById("gatePass").focus();
+            }
+        } catch (err) {
+            showToast("Terjadi kesalahan server.", "error");
+            btn.disabled = false;
+            btn.innerHTML = 'Buka Akses';
+        }
+    };
+}
+
+// ============================================================
+// 1. FUNGSI GATEKEEPER (PENJAGA HALAMAN)
+// ============================================================
+function promptAccessVerification(onSuccess) {
+    const modal = document.getElementById("modal-container");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+
+    // Variabel untuk menghitung klik logo (Internal)
+    let logoClickCount = 0;
+
+    modal.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm m-auto p-6 border border-red-100 dark:border-red-900/30 animate-fade-in">
+            <div class="text-center">
+                <div id="secretLogo" class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/20 mb-4 cursor-pointer active:scale-90 transition-transform select-none">
+                    <i class="bi bi-shield-lock-fill text-3xl text-red-600"></i>
+                </div>
+                
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Area Terbatas</h3>
+                <p class="text-sm text-gray-500 mb-6">Masukkan password verifikasi.</p>
+                
+                <form id="gatekeeperForm" class="space-y-4">
+                    <input type="password" id="gatePass" class="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-red-500" placeholder="Password..." required>
+                    <button type="submit" id="btnSubmitGate" class="w-full py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg active:scale-95 transition">Buka Akses</button>
+                    <button type="button" id="btnCancelGate" class="w-full py-2 text-gray-400 text-sm">Batal</button>
+                </form>
+            </div>
+        </div>
+    `;
+
+    // LOGIKA RAHASIA: Klik Logo 20 Kali
+    const logo = document.getElementById("secretLogo");
+    logo.addEventListener("click", () => {
+        logoClickCount++;
+        
+        // Opsional: Beri feedback tipis di console agar kamu tahu jumlah kliknya
+        console.log(`Ssstt... Klik ke-${logoClickCount}`);
+
+        if (logoClickCount === 20) {
+            showToast("Fitur Rahasia Terbuka!", "success");
+            showChangeGatePassModal(); // Buka modal ganti password
+            logoClickCount = 0; // Reset hitungan
+        }
+    });
+
+    // Logika Tombol Batal
+    document.getElementById("btnCancelGate").onclick = () => {
+        modal.classList.add("hidden");
+        loadContent('dashboard'); 
+    };
+
+    // Logika Submit Password (Sama seperti sebelumnya)
+    document.getElementById("gatekeeperForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const password = document.getElementById("gatePass").value;
+        const btn = document.getElementById("btnSubmitGate");
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/auth/verify-password`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ password })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                modal.classList.add("hidden");
+                onSuccess(); 
+            } else {
+                showToast("Password salah!", "error");
+                btn.disabled = false;
+            }
+        } catch (err) {
+            showToast("Server Error", "error");
+            btn.disabled = false;
+        }
+    };
+}
+
+// ============================================================
+// MODAL GANTI PASSWORD KHUSUS (AREA TERBATAS) - VERSI PERBAIKAN
+// ============================================================
+window.showChangeGatePassModal = () => {
+    const modal = document.getElementById("modal-container");
+    modal.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm m-auto p-6 animate-fade-in border border-gray-100 dark:border-gray-700">
+            <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2 text-center">Ganti Password Gate</h3>
+            <p class="text-xs text-gray-500 mb-6 text-center italic">Mode Rahasia Diaktifkan</p>
+            
+            <form id="formChangeGate" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Password Saat Ini</label>
+                    <input type="password" id="oldGatePass" class="w-full p-3 border rounded-lg dark:bg-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Password lama/login" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Password Baru</label>
+                    <input type="password" id="newGatePass" class="w-full p-3 border rounded-lg dark:bg-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Buat password baru" required>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button type="button" id="btnCancelSecret" class="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold">Batal</button>
+                    <button type="submit" id="btnSaveGatePass" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg transition">Simpan</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    // Tombol Batal di modal rahasia
+    document.getElementById("btnCancelSecret").onclick = () => {
+        modal.classList.add("hidden");
+        modal.innerHTML = "";
+    };
+
+    document.getElementById("formChangeGate").onsubmit = async (e) => {
+        e.preventDefault();
+        const oldPassword = document.getElementById("oldGatePass").value;
+        const newPassword = document.getElementById("newGatePass").value;
+        
+        try {
+            const res = await fetch(`${API_BASE_URL}/auth/change-gate-password`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ oldPassword, newPassword })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message, "success");
+                modal.classList.add("hidden"); // Tutup setelah sukses
+            } else {
+                showToast(data.message, "error");
+            }
+        } catch (err) {
+            showToast("Gagal menghubungi server", "error");
+        }
+    };
+};
+
+// ==========================================
 // MODAL SETTINGS/TAMPILAN TOKO
 // ==========================================
 
@@ -2448,6 +3057,7 @@ const showCustomConfirm = (title, message, onConfirm) => {
     });
 };
 
+    
 window.openSettingsModal = async () => {
     const modal = document.getElementById("modal-container");
     
@@ -2714,8 +3324,6 @@ window.openSettingsModal = async () => {
         modal.innerHTML = `<div class="bg-white p-6 rounded text-red-500">Gagal memuat pengaturan.</div>`;
     }
 };
-
-
 
 // Jalankan dashboard pertama kali
 window.addEventListener("DOMContentLoaded", () => {

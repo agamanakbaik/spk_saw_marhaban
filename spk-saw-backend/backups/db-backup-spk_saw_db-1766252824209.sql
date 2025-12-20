@@ -29,9 +29,10 @@ CREATE TABLE `admins` (
   `password_hash` varchar(255) NOT NULL,
   `role` enum('superadmin','admin') NOT NULL DEFAULT 'admin',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `gate_password_hash` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -40,7 +41,7 @@ CREATE TABLE `admins` (
 
 LOCK TABLES `admins` WRITE;
 /*!40000 ALTER TABLE `admins` DISABLE KEYS */;
-INSERT INTO `admins` VALUES (4,'agam','superadmin','$2b$10$B3FcDQPuMTYVmTi1hQdbN.RvWhMES2QfOvTnSLZatQV4ZwBNph7kW','superadmin','2025-09-28 16:25:58'),(5,'','admin','$2b$10$u6rneLlW2ABkI3FwOsEC/e2iPVMMUQkRcJC78PuplwK9Fbtf4rbLW','admin','2025-10-12 12:54:43');
+INSERT INTO `admins` VALUES (4,'agam','superadmin','$2b$10$brWJSz48mMC/KHHQhT6A6eIWzYW/M.TZvDbd65rxEDarQKemr8yDq','superadmin','2025-09-28 16:25:58',NULL),(5,'','admin','$2b$10$44QjaLZ9MUzvDTnvDea4f.57tP2xCa4z2iLV4T0tAtkQ6D1K/T6Zy','admin','2025-10-12 12:54:43',NULL),(10,'','agam','$2b$10$9JmaqtJgGiQOiNRBD9dT0uJpzpE4Yq3L.vXw9sjk9JhQlAh7jmFiG','admin','2025-12-18 15:37:28',NULL);
 /*!40000 ALTER TABLE `admins` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -57,10 +58,11 @@ CREATE TABLE `alternatifs` (
   `nama_periode` varchar(100) DEFAULT NULL,
   `deskripsi` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `admin_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `kode` (`kode_alternatif`),
   UNIQUE KEY `kode_alternatif` (`kode_alternatif`)
-) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -69,7 +71,7 @@ CREATE TABLE `alternatifs` (
 
 LOCK TABLES `alternatifs` WRITE;
 /*!40000 ALTER TABLE `alternatifs` DISABLE KEYS */;
-INSERT INTO `alternatifs` VALUES (35,'A1','Januari','2025','2025-11-26 14:16:48'),(36,'A2','Februari','2025','2025-11-26 14:16:57'),(37,'A3','Maret','2025','2025-11-26 14:17:07'),(38,'A4','April','2025','2025-11-26 14:17:18'),(39,'A5','Mei','2025','2025-11-26 14:17:29');
+INSERT INTO `alternatifs` VALUES (41,'A1','MEI 2025',NULL,'2025-12-08 12:16:58',5),(43,'A2','JUNI 2025',NULL,'2025-12-08 12:17:23',5),(44,'A3','JULI 2025',NULL,'2025-12-08 12:17:38',5),(45,'A4','AGUSTUS 2025',NULL,'2025-12-08 12:17:58',5),(46,'A5','SEPTEMBER 2025',NULL,'2025-12-08 12:18:12',5),(47,'A6','OKTOBER 2025',NULL,'2025-12-08 12:18:26',5);
 /*!40000 ALTER TABLE `alternatifs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -115,9 +117,10 @@ CREATE TABLE `kriterias` (
   `nama` varchar(100) NOT NULL,
   `bobot` float NOT NULL,
   `tipe` enum('Benefit','Cost') NOT NULL,
+  `admin_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `kode` (`kode`)
-) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -126,7 +129,7 @@ CREATE TABLE `kriterias` (
 
 LOCK TABLES `kriterias` WRITE;
 /*!40000 ALTER TABLE `kriterias` DISABLE KEYS */;
-INSERT INTO `kriterias` VALUES (32,'K1','Kas',5,'Benefit'),(33,'K2','Piutang',5,'Benefit'),(34,'K3','Laba',5,'Benefit'),(35,'K4','Cash Flow',5,'Benefit'),(36,'K5','Persediaan Stok',5,'Cost'),(37,'K6','Hutang',5,'Cost');
+INSERT INTO `kriterias` VALUES (38,'K1','PEDAPATAN',25,'Benefit',5),(39,'K2','LABA BERSIH',30,'Benefit',5),(40,'K3','RASIO PROFIT MARGIN',20,'Benefit',5),(41,'K4','RASIO GAJI',10,'Cost',5),(42,'K5','ARUS KAS SISA',15,'Benefit',5);
 /*!40000 ALTER TABLE `kriterias` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -143,13 +146,14 @@ CREATE TABLE `penilaians` (
   `kriteria_id` int(11) NOT NULL,
   `periode` varchar(20) NOT NULL,
   `nilai` int(11) NOT NULL,
+  `admin_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `alternatif_id` (`alternatif_id`,`kriteria_id`,`periode`),
   UNIQUE KEY `idx_alternatif_kriteria` (`alternatif_id`,`kriteria_id`),
   KEY `kriteria_id` (`kriteria_id`),
   CONSTRAINT `penilaians_ibfk_1` FOREIGN KEY (`alternatif_id`) REFERENCES `alternatifs` (`id`) ON DELETE CASCADE,
   CONSTRAINT `penilaians_ibfk_2` FOREIGN KEY (`kriteria_id`) REFERENCES `kriterias` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1703 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1772 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -158,7 +162,7 @@ CREATE TABLE `penilaians` (
 
 LOCK TABLES `penilaians` WRITE;
 /*!40000 ALTER TABLE `penilaians` DISABLE KEYS */;
-INSERT INTO `penilaians` VALUES (1522,35,32,'',3),(1523,35,33,'',2),(1524,35,34,'',1),(1525,35,35,'',4),(1526,35,36,'',4),(1527,35,37,'',4),(1528,36,32,'',2),(1529,36,33,'',2),(1530,36,34,'',3),(1531,36,35,'',4),(1532,36,36,'',4),(1533,36,37,'',5),(1534,37,32,'',4),(1535,37,33,'',2),(1536,37,34,'',4),(1537,37,35,'',5),(1538,37,36,'',4),(1539,37,37,'',3),(1540,38,32,'',4),(1541,38,33,'',5),(1542,38,34,'',5),(1543,38,35,'',4),(1544,38,36,'',4),(1545,38,37,'',3),(1546,39,32,'',4),(1547,39,33,'',3),(1548,39,34,'',3),(1549,39,35,'',2),(1550,39,36,'',3),(1551,39,37,'',4);
+INSERT INTO `penilaians` VALUES (1741,41,38,'',4,5),(1742,41,39,'',3,5),(1743,41,40,'',3,5),(1744,41,41,'',4,5),(1745,41,42,'',4,5),(1746,43,38,'',4,5),(1747,43,39,'',2,5),(1748,43,40,'',1,5),(1749,43,41,'',3,5),(1750,43,42,'',1,5),(1751,44,38,'',5,5),(1752,44,39,'',1,5),(1753,44,40,'',5,5),(1754,44,41,'',3,5),(1755,44,42,'',2,5),(1756,45,38,'',5,5),(1757,45,39,'',2,5),(1758,45,40,'',3,5),(1759,45,41,'',4,5),(1760,45,42,'',3,5),(1761,46,38,'',3,5),(1762,46,39,'',4,5),(1763,46,40,'',4,5),(1764,46,41,'',3,5),(1765,46,42,'',2,5),(1766,47,38,'',1,5),(1767,47,39,'',4,5),(1768,47,40,'',3,5),(1769,47,41,'',3,5),(1770,47,42,'',3,5);
 /*!40000 ALTER TABLE `penilaians` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -185,7 +189,7 @@ CREATE TABLE `settings` (
 
 LOCK TABLES `settings` WRITE;
 /*!40000 ALTER TABLE `settings` DISABLE KEYS */;
-INSERT INTO `settings` VALUES (1,'AGAM MATEO','background-1764282186648-530287878.png','logo-1764282186607-3032725.jpg','2025-11-27 22:23:06');
+INSERT INTO `settings` VALUES (1,'MARHABAN','','logo-1765208922065-901300284.png','2025-12-08 15:48:42');
 /*!40000 ALTER TABLE `settings` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -204,11 +208,12 @@ CREATE TABLE `sub_kriterias` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `keterangan` text DEFAULT NULL,
+  `admin_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_subkriteria` (`kriteria_id`,`nama`),
   UNIQUE KEY `uk_nilai_subkriteria` (`kriteria_id`,`nilai`),
   CONSTRAINT `sub_kriterias_ibfk_1` FOREIGN KEY (`kriteria_id`) REFERENCES `kriterias` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=92 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=118 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -217,7 +222,7 @@ CREATE TABLE `sub_kriterias` (
 
 LOCK TABLES `sub_kriterias` WRITE;
 /*!40000 ALTER TABLE `sub_kriterias` DISABLE KEYS */;
-INSERT INTO `sub_kriterias` VALUES (61,32,'Sangat baik',5,'2025-11-26 14:21:59','2025-11-26 14:33:33','> 150 juta'),(63,32,'Baik',4,'2025-11-26 14:34:37','2025-11-26 14:34:37','100 – 150 juta'),(64,32,'Cukup',3,'2025-11-26 14:36:28','2025-11-26 14:36:28','50 – 100 juta'),(65,32,'Kurang',2,'2025-11-26 14:37:00','2025-11-26 14:37:00','20 – 50 juta'),(66,32,'Buruk',1,'2025-11-26 14:37:20','2025-11-26 14:37:20','< 20 juta'),(67,33,'Sangat Baik',5,'2025-11-26 14:38:33','2025-11-26 14:38:33','> 120 juta'),(68,33,'Baik',4,'2025-11-26 14:40:07','2025-11-26 14:40:07','80 – 120 juta'),(69,33,'Cukup',3,'2025-11-26 14:40:54','2025-11-26 14:40:54','40 – 80 juta'),(70,33,'Kurang',2,'2025-11-26 14:41:20','2025-11-26 14:41:20','10 – 40 juta'),(71,33,'Buruk',1,'2025-11-26 14:41:40','2025-11-26 14:41:40','< 10 juta'),(72,34,'Sangat Baik',5,'2025-11-26 15:09:47','2025-11-26 15:09:47','> 70 juta'),(73,34,'Baik',4,'2025-11-26 15:10:07','2025-11-26 15:10:07','50 – 70 juta'),(74,34,'Cukup',3,'2025-11-26 15:10:35','2025-11-26 15:10:35','30 – 50 juta'),(75,34,'Kurang',2,'2025-11-26 15:11:03','2025-11-26 15:11:03','10 – 30 juta'),(76,34,'Buruk',1,'2025-11-26 15:11:16','2025-11-26 15:11:16','< 10 juta'),(77,35,'Sangat Baik',5,'2025-11-26 15:12:17','2025-11-26 15:12:17','> 100 juta'),(78,35,'Baik',4,'2025-11-26 15:12:30','2025-11-26 15:12:30','70 – 100 juta'),(79,35,'Cukup',3,'2025-11-26 15:12:49','2025-11-26 15:12:49','40 – 70 juta'),(80,35,'Kurang',2,'2025-11-26 15:13:01','2025-11-26 15:13:01','10 – 40 juta'),(81,35,'Buruk',1,'2025-11-26 15:13:20','2025-11-26 15:13:20','< 10 juta'),(82,36,'Sangat Baik (stok ideal)',5,'2025-11-26 15:14:22','2025-11-26 15:14:22','< 20 juta'),(83,36,'Baik',4,'2025-11-26 15:14:36','2025-11-26 15:14:36','20 – 40 juta'),(84,36,'Cukup',3,'2025-11-26 15:14:49','2025-11-26 15:14:49','40 – 70 juta'),(85,36,'Kurang',2,'2025-11-26 15:15:04','2025-11-26 15:15:04','70 – 120 juta'),(86,36,'Buruk (overstock)',1,'2025-11-26 15:15:25','2025-11-26 15:15:25','> 120 juta'),(87,37,'0 (tanpa hutang)',5,'2025-11-26 15:16:30','2025-11-26 15:16:30','Sangat Baik'),(88,37,'Baik',4,'2025-11-26 15:16:45','2025-11-26 15:16:45','< 50 juta'),(89,37,'Cukup',3,'2025-11-26 15:16:57','2025-11-26 15:16:57','50 – 150 juta'),(90,37,'Kurang',2,'2025-11-26 15:17:13','2025-11-26 15:17:13','150 – 300 juta'),(91,37,'Buruk',1,'2025-11-26 15:17:27','2025-11-26 15:17:27','> 300 juta');
+INSERT INTO `sub_kriterias` VALUES (92,38,'< 600 juta',1,'2025-12-08 12:22:08','2025-12-18 16:20:45','',5),(93,38,'600 - 800 juta',2,'2025-12-08 12:22:23','2025-12-18 16:20:45','',5),(95,38,'800 juta - 1 M',3,'2025-12-08 12:23:05','2025-12-18 16:20:45','',5),(96,38,'1 - 1,3 M',4,'2025-12-08 12:23:20','2025-12-18 16:20:45','',5),(97,38,'> 1,3 M',5,'2025-12-08 12:23:52','2025-12-18 16:20:45','',5),(98,39,'< 150 juta',1,'2025-12-08 12:24:16','2025-12-18 16:20:45','',5),(99,39,'150 - 250 juta',2,'2025-12-08 12:24:29','2025-12-18 16:20:45','',5),(100,39,'250 - 350 juta',3,'2025-12-08 12:24:42','2025-12-18 16:20:45','',5),(101,39,'350 - 450 juta',4,'2025-12-08 12:24:54','2025-12-18 16:20:45','',5),(102,39,'> 450 juta',5,'2025-12-08 12:25:03','2025-12-18 16:20:45','',5),(103,40,'< 15%',1,'2025-12-08 12:25:21','2025-12-18 16:20:45','',5),(104,40,'15% - 20%',2,'2025-12-08 12:25:34','2025-12-18 16:20:45','',5),(105,40,'21%- 30%',3,'2025-12-08 12:25:49','2025-12-18 16:20:45','',5),(106,40,'31% - 40%',4,'2025-12-08 12:26:25','2025-12-18 16:20:45','',5),(107,40,'> 40%',5,'2025-12-08 12:27:20','2025-12-18 16:20:45','',5),(108,41,'> 9%',1,'2025-12-08 12:27:51','2025-12-18 16:20:45','',5),(109,41,'8% - 9%',2,'2025-12-08 12:28:05','2025-12-18 16:20:45','',5),(110,41,'6% - 7%',3,'2025-12-08 12:28:20','2025-12-18 16:20:45','',5),(111,41,'4% - 5%',4,'2025-12-08 12:28:35','2025-12-18 16:20:45','',5),(112,41,'< 4 %',5,'2025-12-08 12:28:46','2025-12-18 16:20:45','',5),(113,42,'< 200 juta',1,'2025-12-08 12:29:03','2025-12-18 16:20:45','',5),(114,42,'200 - 400 juta',2,'2025-12-08 12:29:20','2025-12-18 16:20:45','',5),(115,42,'400 - 600 juta',3,'2025-12-08 12:29:32','2025-12-18 16:20:45','',5),(116,42,'600 - 800 juta',4,'2025-12-08 12:29:45','2025-12-18 16:20:45','',5),(117,42,'> 800 juta',5,'2025-12-08 12:29:54','2025-12-18 16:20:45','',5);
 /*!40000 ALTER TABLE `sub_kriterias` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -230,4 +235,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-11-28  5:46:36
+-- Dump completed on 2025-12-21  0:47:06

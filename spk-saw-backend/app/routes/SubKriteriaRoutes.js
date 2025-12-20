@@ -1,43 +1,33 @@
 /**
  * ROUTES: /api/subkriteria
- * Menangani CRUD dan READ tambahan untuk data Sub Kriteria.
+ * Menangani CRUD Sub Kriteria.
  */
 const express = require('express');
 const router = express.Router();
-const bodyParser = require('body-parser'); // Diperlukan untuk POST/PUT
-
 const SubKriteriaController = require('../controllers/SubKriteriaController');
 const { verifyToken } = require('../middleware/authMiddleware');
 
-// 🔐 Terapkan JWT Middleware ke semua route
+// === DEBUGGING (Cek apakah Controller terbaca dengan benar) ===
+console.log("Cek SubKriteriaController:", SubKriteriaController);
+
+// 🔐 WAJIB: Terapkan Middleware Auth ke semua route di bawah ini
+// Ini yang membuat req.user.id tersedia di Controller
 router.use(verifyToken);
 
-// ----------------------------------------------------
-// 1. RUTE GET ALL
-// ----------------------------------------------------
-// GET /api/subkriteria/all - Mendapatkan SEMUA sub kriteria.
+// 1. GET ALL (Tanpa filter, opsi tambahan)
 router.get('/all', SubKriteriaController.getAllSubKriterias);
 
-
-// ----------------------------------------------------
-// 2. RUTE UTAMA (GET by kriteria_id & POST Create)
-// ----------------------------------------------------
+// 2. RUTE UTAMA (GET by Query & POST)
 router.route('/')
-    // GET /api/subkriteria?kriteria_id=... (Filter per kriteria)
+    // GET /api/subkriteria?kriteria_id=...
     .get(SubKriteriaController.getSubKriteriasByKriteria)
-    // POST /api/subkriteria (CREATE, dengan inline body-parser untuk jaminan req.body)
-    .post(bodyParser.json(), SubKriteriaController.createSubKriteria);
+    // POST /api/subkriteria
+    .post(SubKriteriaController.createSubKriteria);
 
-
-// ----------------------------------------------------
-// 3. RUTE SPESIFIK (GET by ID, PUT Update, DELETE)
-// ----------------------------------------------------
+// 3. RUTE SPESIFIK (GET One, PUT, DELETE)
 router.route('/:id')
-    // GET /api/subkriteria/:id (READ by ID)
     .get(SubKriteriaController.getSubKriteriaById)
-    // PUT /api/subkriteria/:id (UPDATE, dengan inline body-parser)
-    .put(bodyParser.json(), SubKriteriaController.updateSubKriteria)
-    // DELETE /api/subkriteria/:id
+    .put(SubKriteriaController.updateSubKriteria)
     .delete(SubKriteriaController.deleteSubKriteria);
 
 module.exports = router;

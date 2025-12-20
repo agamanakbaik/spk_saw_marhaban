@@ -1,32 +1,26 @@
 /**
  * ROUTES: /api/penilaian
- * Menangani CRUD untuk data Penilaian (Matriks Xij).
+ * Menangani routing untuk Penilaian Alternatif.
  */
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const penilaianController = require("../controllers/PenilaianController");
-const { verifyToken } = require("../middleware/authMiddleware"); // Pastikan path ini benar
+const PenilaianController = require('../controllers/PenilaianController');
+const { verifyToken } = require('../middleware/authMiddleware');
 
-// =======================================================
-// === ENDPOINT BARU UNTUK UI 'SIMPAN SEMUA' DARI APP.JS ===
-// =======================================================
-// POST /api/penilaian/save-all
-router.post("/save-all", verifyToken, penilaianController.saveAllPenilaian);
+// === DEBUGGING (Hapus nanti jika sudah fix) ===
+console.log("Cek Fungsi PenilaianController:", PenilaianController);
 
-// =======================================================
-// === RUTE-RUTE LAMA ANDA (DISIMPAN) ===
-// =======================================================
+// Terapkan Middleware Auth
+router.use(verifyToken);
 
-// Rute utama untuk GET All dan POST (Create Batch lama)
-router
-    .route("/")
-    .get(verifyToken, penilaianController.getAllPenilaians)
-    .post(verifyToken, penilaianController.createOrUpdatePenilaian);
+// 1. GET ALL (Ambil data untuk ditampilkan di tabel)
+router.get('/', PenilaianController.getAllPenilaians);
 
-// Rute spesifik untuk PUT (Update Batch lama) dan DELETE
-router
-    .route("/:id")
-    .put(verifyToken, penilaianController.createOrUpdatePenilaian) // Ini rute lama Anda
-    .delete(verifyToken, penilaianController.deletePenilaian);
+// 2. SAVE ALL (Simpan semua data dari tombol "Simpan Perubahan")
+// Pastikan nama fungsi di controller adalah 'saveAllPenilaian'
+router.post('/save-all', PenilaianController.saveAllPenilaian);
+
+// 3. DELETE (Hapus satu baris penilaian)
+router.delete('/:id', PenilaianController.deletePenilaian);
 
 module.exports = router;

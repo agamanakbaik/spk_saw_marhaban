@@ -1,14 +1,17 @@
 /**
  * CONTROLLER: AlternatifController.js
- * Menangani CRUD data Alternatif (Periode Evaluasi)
+ * Menangani CRUD data Alternatif (Periode Evaluasi) PER USER.
  */
 
-const db = require('../../config/db');
+// PENTING: Panggil Model, jangan db.query langsung di sini
+const AlternatifModel = require('../models/AlternatifModel');
 
-// 🔹 Ambil semua data alternatif
+// 🔹 Ambil semua data alternatif milik user login
 exports.getAllAlternatifs = async(req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM alternatifs ORDER BY id DESC');
+        const adminId = req.user.id; // Ambil ID dari Token
+        const rows = await AlternatifModel.getAll(adminId);
+
         res.json({
             success: true,
             data: rows
@@ -19,16 +22,18 @@ exports.getAllAlternatifs = async(req, res) => {
     }
 };
 
-// 🔹 Tambah data alternatif
+// 🔹 Tambah data alternatif untuk user login
 exports.createAlternatif = async(req, res) => {
     const { kode_alternatif, nama_periode, deskripsi } = req.body;
+    const adminId = req.user.id; // Ambil ID dari Token
+
     if (!kode_alternatif || !nama_periode) {
         return res.status(400).json({ success: false, message: 'Kode dan Nama wajib diisi.' });
     }
+
     try {
-        await db.query(
-            'INSERT INTO alternatifs (kode_alternatif, nama_periode, deskripsi) VALUES (?, ?, ?)', [kode_alternatif, nama_periode, deskripsi || null]
-        );
+        // Kirim adminId dan body ke Model
+        await AlternatifModel.create(adminId, req.body);
         res.json({ success: true, message: 'Alternatif berhasil ditambahkan.' });
     } catch (err) {
         console.error(err);
@@ -36,14 +41,20 @@ exports.createAlternatif = async(req, res) => {
     }
 };
 
-// 🔹 Update data alternatif
+// 🔹 Update data alternatif milik user login
 exports.updateAlternatif = async(req, res) => {
     const { id } = req.params;
     const { kode_alternatif, nama_periode, deskripsi } = req.body;
+    const adminId = req.user.id; // Ambil ID dari Token
+
     try {
-        await db.query(
-            'UPDATE alternatifs SET kode_alternatif=?, nama_periode=?, deskripsi=? WHERE id=?', [kode_alternatif, nama_periode, deskripsi, id]
-        );
+        // Kirim ID data, ID admin, dan data baru ke Model
+        const result = await AlternatifModel.update(id, adminId, req.body);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Alternatif tidak ditemukan atau bukan milik Anda.' });
+        }
+
         res.json({ success: true, message: 'Alternatif berhasil diperbarui.' });
     } catch (err) {
         console.error(err);
@@ -51,11 +62,18 @@ exports.updateAlternatif = async(req, res) => {
     }
 };
 
-// 🔹 Hapus data alternatif
+// 🔹 Hapus data alternatif milik user login
 exports.deleteAlternatif = async(req, res) => {
     const { id } = req.params;
+    const adminId = req.user.id; // Ambil ID dari Token
+
     try {
-        await db.query('DELETE FROM alternatifs WHERE id = ?', [id]);
+        const result = await AlternatifModel.delete(id, adminId);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Alternatif tidak ditemukan atau bukan milik Anda.' });
+        }
+
         res.json({ success: true, message: 'Alternatif berhasil dihapus.' });
     } catch (err) {
         console.error(err);

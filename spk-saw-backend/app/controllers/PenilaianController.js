@@ -1,16 +1,38 @@
 /**
  * CONTROLLER: PenilaianController.js
- * Menangani logika HTTP untuk Penilaian Alternatif PER USER.
+ * Logika HTTP: STRICT FILTERING (Superadmin wajib pilih admin).
  */
 const PenilaianModel = require("../models/PenilaianModel");
 
-// [READ] Mendapatkan semua penilaian milik USER LOGIN
+// [READ] Superadmin WAJIB pilih admin, Admin Biasa lihat sendiri
 exports.getAllPenilaians = async(req, res) => {
     try {
-        const adminId = req.user.id; // Ambil ID Admin
-        const data = await PenilaianModel.getAll(adminId);
+        const adminId = req.user.id;
+        const userRole = req.user.role;
+        const { filter_id } = req.query; // Tangkap ID dari dropdown
+
+        let finalFilterId;
+
+        if (userRole === 'superadmin') {
+            // --- STRICT MODE ---
+            // Jika Superadmin belum memilih admin (filter_id kosong),
+            // kembalikan data kosong agar dashboard bersih.
+            if (!filter_id) {
+                return res.status(200).json({
+                    message: "Pilih admin terlebih dahulu untuk melihat penilaian.",
+                    data: [],
+                });
+            }
+            finalFilterId = filter_id;
+        } else {
+            // Admin Biasa: Selalu filter punya sendiri
+            finalFilterId = adminId;
+        }
+
+        const data = await PenilaianModel.getAll(finalFilterId);
+
         res.status(200).json({
-            message: "Semua data penilaian Anda berhasil diambil.",
+            message: "Data penilaian berhasil diambil.",
             data: data,
         });
     } catch (error) {
@@ -19,18 +41,19 @@ exports.getAllPenilaians = async(req, res) => {
     }
 };
 
-// [CREATE/UPDATE BATCH] Simpan semua nilai dari tabel input
+// [SAVE BATCH] Simpan/Update Nilai (Superadmin bisa edit punya orang)
 exports.saveAllPenilaian = async(req, res) => {
     const penilaianData = req.body;
-    const adminId = req.user.id; // Ambil ID Admin
+    const adminId = req.user.id;
+    const userRole = req.user.role; // PENTING: Kirim Role ke Model
 
     if (!Array.isArray(penilaianData) || penilaianData.length === 0) {
         return res.status(400).json({ message: "Data penilaian kosong." });
     }
 
     try {
-        // Kirim adminId ke Model
-        const affectedRows = await PenilaianModel.saveAll(adminId, penilaianData);
+        // Kirim adminId, data, DAN ROLE ke Model
+        const affectedRows = await PenilaianModel.saveAll(adminId, penilaianData, userRole);
 
         res.status(201).json({
             message: `Berhasil menyimpan ${affectedRows} data penilaian.`,
@@ -42,13 +65,14 @@ exports.saveAllPenilaian = async(req, res) => {
     }
 };
 
-// [DELETE] Hapus penilaian (Pastikan milik user sendiri)
+// [DELETE] Hapus (Superadmin bisa hapus punya orang)
 exports.deletePenilaian = async(req, res) => {
     const { id } = req.params;
     const adminId = req.user.id;
+    const userRole = req.user.role;
 
     try {
-        const affectedRows = await PenilaianModel.deleteById(id, adminId);
+        const affectedRows = await PenilaianModel.deleteById(id, adminId, userRole);
 
         if (affectedRows === 0) {
             return res.status(404).json({ message: "Data tidak ditemukan atau bukan milik Anda." });

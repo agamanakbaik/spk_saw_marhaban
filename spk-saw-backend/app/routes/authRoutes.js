@@ -14,5 +14,7 @@ router.put('/profile', verifyToken, authController.updateProfile);
 router.post('/verify-password', verifyToken, authController.verifyPassword);
 //ganti password verifikasi 2 langkah
 router.put('/change-gate-password', verifyToken, authController.changeGatePassword);
+// Endpoint ini WAJIB ADA agar dropdown Superadmin muncul isinya
+router.get('/list-admin', verifyToken, authController.getListAdmin);
 
 module.exports = router;

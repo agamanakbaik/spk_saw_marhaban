@@ -1,45 +1,50 @@
 /**
  * MODEL: PenilaianModel.js
- * Menangani CRUD Penilaian dengan FILTER ADMIN_ID.
+ * SUDAH UPDATE: Support Strict Filter & Superadmin Editing.
  */
 const db = require("../../config/db");
 
 class PenilaianModel {
 
     /**
-     * Simpan BATCH penilaian dengan ADMIN_ID
+     * SIMPAN BATCH (Smart Logic)
+     * - Admin Biasa: Hanya bisa edit punya sendiri.
+     * - Superadmin: Bisa edit punya siapa saja (berdasarkan Alternatif ID).
      */
-    static async saveAll(adminId, penilaianData) {
+    static async saveAll(adminId, penilaianData, role) {
         if (!penilaianData || penilaianData.length === 0) return 0;
 
         const connection = await db.getConnection();
         try {
             await connection.beginTransaction();
-
             let affectedCount = 0;
 
-            // Kita loop satu per satu untuk memastikan logika admin_id benar
-            // Menggunakan "INSERT ... ON DUPLICATE KEY UPDATE"
             for (const p of penilaianData) {
-                // Pastikan alternatif dan kriteria yang dinilai juga milik admin ini (Validasi)
-                // (Opsional, tapi bagus untuk keamanan). Di sini kita langsung insert saja.
+                let sqlCheck, paramsCheck;
 
-                // Query: Insert jika belum ada, Update jika sudah ada (kunci unik: admin_id + alt_id + krit_id)
-                // Pastikan Anda punya UNIQUE INDEX di DB: (admin_id, alternatif_id, kriteria_id)
-                // Jika belum ada unique index, query ini mungkin insert duplikat.
+                // --- LOGIKA CEK KEPEMILIKAN ---
+                if (role === 'superadmin') {
+                    // Superadmin: Cek berdasarkan kombinasi Alternatif & Kriteria saja.
+                    // (Mengabaikan admin_id, supaya bisa edit data milik Admin lain)
+                    sqlCheck = "SELECT id FROM penilaians WHERE alternatif_id = ? AND kriteria_id = ?";
+                    paramsCheck = [p.alternatif_id, p.kriteria_id];
+                } else {
+                    // Admin Biasa: WAJIB cek admin_id (Hanya bisa edit punya sendiri)
+                    sqlCheck = "SELECT id FROM penilaians WHERE admin_id = ? AND alternatif_id = ? AND kriteria_id = ?";
+                    paramsCheck = [adminId, p.alternatif_id, p.kriteria_id];
+                }
 
-                // Cara Aman Tanpa Unique Index: Cek dulu exist
-                const [exist] = await connection.query(
-                    "SELECT id FROM penilaians WHERE admin_id = ? AND alternatif_id = ? AND kriteria_id = ?", [adminId, p.alternatif_id, p.kriteria_id]
-                );
+                const [exist] = await connection.query(sqlCheck, paramsCheck);
 
                 if (exist.length > 0) {
-                    // Update
+                    // UPDATE (Jika data sudah ada)
+                    // Update nilainya saja. Pemilik data (admin_id) TIDAK DIUBAH.
                     await connection.query(
                         "UPDATE penilaians SET nilai = ? WHERE id = ?", [p.nilai, exist[0].id]
                     );
                 } else {
-                    // Insert
+                    // INSERT (Jika data belum ada)
+                    // Data baru tercatat atas nama yang sedang login
                     await connection.query(
                         "INSERT INTO penilaians (admin_id, alternatif_id, kriteria_id, nilai) VALUES (?, ?, ?, ?)", [adminId, p.alternatif_id, p.kriteria_id, p.nilai]
                     );
@@ -60,24 +65,35 @@ class PenilaianModel {
     }
 
     /**
-     * Ambil SEMUA penilaian milik ADMIN tertentu
+     * AMBIL SEMUA (Strict Filtered)
      */
-    static async getAll(adminId) {
+    static async getAll(filterId) {
         try {
-            // Filter WHERE admin_id = ?
-            const sql = `
+            let sql = `
                 SELECT 
                     p.id, p.nilai,
                     p.alternatif_id, p.kriteria_id, 
                     a.kode_alternatif, a.nama_periode,
-                    k.kode AS kode_kriteria, k.nama AS nama_kriteria
+                    k.kode AS kode_kriteria, k.nama AS nama_kriteria,
+                    admins.username as penginput
                 FROM penilaians p
                 JOIN alternatifs a ON p.alternatif_id = a.id
                 JOIN kriterias k ON p.kriteria_id = k.id
-                WHERE p.admin_id = ?
-                ORDER BY a.kode_alternatif, k.kode
+                LEFT JOIN admins ON p.admin_id = admins.id 
             `;
-            const [rows] = await db.query(sql, [adminId]);
+
+            let params = [];
+
+            // Karena Controller Mode Strict, filterId pasti terisi saat sampai sini.
+            if (filterId) {
+                sql += " WHERE p.admin_id = ? ";
+                params.push(filterId);
+            }
+            // Else: Jika filterId null (fallback), query akan ambil semua data global.
+
+            sql += " ORDER BY a.kode_alternatif, k.kode";
+
+            const [rows] = await db.query(sql, params);
             return rows;
         } catch (error) {
             console.error("Error fetching all penilaian:", error);
@@ -86,13 +102,20 @@ class PenilaianModel {
     }
 
     /**
-     * Hapus penilaian milik ADMIN tertentu
+     * HAPUS (Cek Role)
      */
-    static async deleteById(id, adminId) {
+    static async deleteById(id, adminId, role) {
         try {
-            const [result] = await db.query(
-                "DELETE FROM penilaians WHERE id = ? AND admin_id = ?", [id, adminId]
-            );
+            let sql = "DELETE FROM penilaians WHERE id = ?";
+            let params = [id];
+
+            // Jika BUKAN superadmin, kunci hapus hanya untuk data sendiri
+            if (role !== 'superadmin') {
+                sql += " AND admin_id = ?";
+                params.push(adminId);
+            }
+
+            const [result] = await db.query(sql, params);
             return result.affectedRows;
         } catch (error) {
             console.error("Error deleting penilaian:", error);

@@ -100,4 +100,15 @@ AdminModel.updateGatePassword = async(id, newGateHash) => {
     await db.query('UPDATE admins SET gate_password_hash = ? WHERE id = ?', [newGateHash, id]);
 };
 
+/**
+ * 8. GET ALL EXCEPT SUPERADMIN
+ * Khusus untuk dropdown filter di dashboard Superadmin.
+ * Mengambil semua user kecuali yang rolenya 'superadmin'.
+ */
+AdminModel.findAllExceptSuperadmin = async() => {
+    // Ambil id dan username saja, filter role != 'superadmin'
+    const [rows] = await db.query("SELECT id, username FROM admins WHERE role != 'superadmin' ORDER BY username ASC");
+    return rows;
+};
+
 module.exports = AdminModel;

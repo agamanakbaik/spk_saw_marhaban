@@ -1,5 +1,5 @@
 // app/models/perhitunganModel.js
-// Bertanggung jawab atas SEMUA logika perhitungan SAW (Per User)
+// Bertanggung jawab atas SEMUA logika perhitungan SAW.
 
 const KriteriaModel = require("./KriteriaModel");
 const AlternatifModel = require("./AlternatifModel");
@@ -7,16 +7,18 @@ const PenilaianModel = require("./PenilaianModel");
 
 const PerhitunganModel = {};
 
-// Fungsi utama perhitungan (Menerima adminId)
-PerhitunganModel.calculateSAW = async(adminId) => {
+// Fungsi utama perhitungan (Menerima filterId dari Controller)
+PerhitunganModel.calculateSAW = async(filterId) => {
 
     // ===========================================
-    // LANGKAH 1: Ambil Data MILIK USER LOGIN
+    // LANGKAH 1: Ambil Data (Sesuai Filter ID)
     // ===========================================
-    // Pastikan Model lain sudah diupdate menerima parameter adminId
-    const kriterias = await KriteriaModel.findAll(adminId);
-    const alternatifs = await AlternatifModel.getAll(adminId);
-    const penilaians = await PenilaianModel.getAll(adminId);
+    // Kita kirim filterId ke model lain.
+    // Jika Admin Biasa -> filterId = ID dia.
+    // Jika Superadmin -> filterId = ID Admin yang dipilih.
+    const kriterias = await KriteriaModel.findAll(filterId);
+    const alternatifs = await AlternatifModel.getAll(filterId);
+    const penilaians = await PenilaianModel.getAll(filterId);
 
     // Validasi data
     if (kriterias.length === 0) {
@@ -44,7 +46,6 @@ PerhitunganModel.calculateSAW = async(adminId) => {
     // ===========================================
     // LANGKAH 2: Buat Matriks Awal (X)
     // ===========================================
-    // Map Penilaian agar mudah dicari: key = "altId-kritId"
     const penilaianMap = new Map();
     penilaians.forEach((p) => {
         penilaianMap.set(`${p.alternatif_id}-${p.kriteria_id}`, p.nilai);
@@ -79,7 +80,7 @@ PerhitunganModel.calculateSAW = async(adminId) => {
     // LANGKAH 4: Matriks Normalisasi (R)
     // ===========================================
     const normalizedValues = initialValues.map((row) => {
-        let normalizedRow = {...row }; // Copy row
+        let normalizedRow = {...row };
         kriterias.forEach((k) => {
             const x_ij = row[k.kode];
             const maxMinVal = minMax[k.kode];
@@ -98,7 +99,6 @@ PerhitunganModel.calculateSAW = async(adminId) => {
     // ==================================================
     const bobotMap = new Map();
     kriterias.forEach((k) => {
-        // Normalisasi bobot agar totalnya jadi 1 (misal bobot 50, 50 -> jadi 0.5, 0.5)
         bobotMap.set(k.kode, parseFloat(k.bobot) / totalBobot);
     });
 

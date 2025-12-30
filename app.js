@@ -11,7 +11,23 @@ let myDashboardChart = null; // Variabel global untuk chart di 'Dashboard'
 let globalChatHistory = []; // <--- Tambahkan ini untuk menyimpan chat sementara
 let globalCalculationData = null; // Menyimpan hasil hitung
 let myRadarChart = null; // Chart untuk modal detail
+let selectedFilterId = ""; // Menyimpan ID Admin yang dipilih Superadmin
+let currentPageName = "dashboard"; // Menyimpan halaman aktif agar bisa di-refresh
 
+// Helper untuk membuat URL dinamis (Otomatis nempel ?filter_id=...)
+function getApiUrl(endpoint) {
+    let url = `${API_BASE_URL}${endpoint}`;
+    if (user.role === 'superadmin' && selectedFilterId) {
+        // Cek apakah sudah ada query param (?)
+        url += (url.includes('?') ? '&' : '?') + `filter_id=${selectedFilterId}`;
+    }
+    return url;
+}
+
+// Fungsi Refresh Halaman Aktif (Dipanggil saat ganti dropdown)
+function refreshCurrentPage() {
+    loadContent(currentPageName);
+}
 
 // ==========================================
 // MENCEGAH TOMBOL BACK/FORWARD (BFCache)
@@ -134,6 +150,37 @@ if (user.role !== "superadmin") {
 
     // 3. Ubah judul pembatas bawah
     if (labelMainPanel) labelMainPanel.textContent = "SUPER ADMIN PANEL";
+    // --- TAMBAHAN: Load List Admin untuk Dropdown ---
+    const filterArea = document.getElementById("superadmin-filter-area");
+    const filterSelect = document.getElementById("adminFilterSelect");
+
+    if (filterArea && filterSelect) {
+        filterArea.classList.remove("hidden"); // Tampilkan Filter Area
+
+        // Fetch daftar admin
+        fetch(`${API_BASE_URL}/auth/list-admin`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    filterSelect.innerHTML = '<option value="">-- Pilih Target Admin --</option>';
+                    res.data.forEach(admin => {
+                        filterSelect.innerHTML += `<option value="${admin.id}">${admin.username}</option>`;
+                    });
+
+                    // Event Listener saat dropdown berubah
+                    filterSelect.addEventListener('change', (e) => {
+                        selectedFilterId = e.target.value;
+                        if (!selectedFilterId) {
+                            showToast("Tampilan kembali kosong (Belum pilih admin)", "warning");
+                        } else {
+                            showToast(`Memuat data milik Admin ID: ${selectedFilterId}`);
+                        }
+                        refreshCurrentPage(); // Reload halaman otomatis
+                    });
+                }
+            })
+            .catch(err => console.error("Gagal load list admin:", err));
+    }
 }
 
 // Logout
@@ -152,6 +199,19 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 // ============================
 window.loadContent = async(page) => {
         const container = document.getElementById("content-container");
+        const filterArea = document.getElementById("superadmin-filter-area");
+        if (filterArea) {
+            // Daftar halaman di mana filter HARUS DISEMBUNYIKAN
+            const hiddenPages = ['manajemen-admin', 'backup-db', 'chatbot'];
+
+            // Jika user adalah superadmin DAN halaman tidak termasuk yang disembunyikan -> Tampilkan
+            if (user.role === 'superadmin' && !hiddenPages.includes(page)) {
+                filterArea.classList.remove('hidden');
+            } else {
+                // Selain itu (misal halaman manajemen admin atau user biasa) -> Sembunyikan
+                filterArea.classList.add('hidden');
+            }
+        }
         if (mainHeader) {
             mainHeader.classList.add('shadow-md');
         }
@@ -161,119 +221,204 @@ window.loadContent = async(page) => {
             // ======================
             // DASHBOARD (UPDATED: TAMBAH NAVIGASI ALTERNATIF)
             // ======================
+            // ======================
+            // DASHBOARD (FIXED: Filter & Struktur Data)
+            // ======================
             if (page === "dashboard") {
-                container.innerHTML = `
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
-            </div>
-            <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
-            <div id="dashboard-content" class="text-center p-8 text-indigo-600 dark:text-indigo-400">
-                <div class="spinner mr-2" style="display:inline-block; width: 1.5rem; height: 1.5rem; border: 3px solid rgba(99, 102, 241, 0.3); border-radius: 50%; border-top-color: #6366F1;"></div>
-                Memuat data dashboard...
-            </div>
-        `;
-                try {
-                    const [altRes, kritRes, calcRes] = await Promise.all([
-                        fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } }),
-                        fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } }),
-                        fetch(`${API_BASE_URL}/perhitungan/hitung`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-                    ]);
-                    const altData = await altRes.json();
-                    const kritData = await kritRes.json();
+                currentPageName = "dashboard";
 
-                    if (!calcRes.ok) {
-                        throw new Error("Data perhitungan belum siap.");
+                // 1. Render Skeleton / Loading Awal
+                container.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
+                    </div>
+                    <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
+                    <div id="dashboard-content" class="text-center p-8 text-indigo-600 dark:text-indigo-400">
+                        <div class="spinner mr-2" style="display:inline-block; width: 1.5rem; height: 1.5rem; border: 3px solid rgba(99, 102, 241, 0.3); border-radius: 50%; border-top-color: #6366F1;"></div>
+                        Memuat data dashboard...
+                    </div>
+                `;
+
+                // 2. LOGIKA STRICT SUPERADMIN (Cek Filter)
+                if (user.role === 'superadmin' && !selectedFilterId) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-96 text-center text-gray-500">
+                            <div class="bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-full mb-3">
+                                <i class="bi bi-person-badge text-6xl text-indigo-300"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-200">Mode Superadmin</h2>
+                            <p class="mb-4 text-gray-500 dark:text-gray-400">Silakan pilih <b>Admin Target</b> di menu atas untuk melihat Ringkasan Dashboard.</p>
+                        </div>`;
+                    return;
+                }
+
+                try {
+                    // 3. FETCH DATA (Gunakan getApiUrl agar filter terbawa)
+                    const [altRes, kritRes, calcRes] = await Promise.all([
+                        fetch(getApiUrl('/alternatif'), { headers: { Authorization: `Bearer ${token}` } }),
+                        fetch(getApiUrl('/kriteria'), { headers: { Authorization: `Bearer ${token}` } }),
+                        fetch(getApiUrl('/perhitungan/hitung'), { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+                    ]);
+
+                    const altJson = await altRes.json();
+                    const kritJson = await kritRes.json();
+                    const calcJson = await calcRes.json();
+
+                    // 4. PARSING DATA (FIXED: Handle wrapper 'data' & 'success')
+
+                    // Ambil array alternatif
+                    const altData = altJson.data || altJson || [];
+
+                    // Ambil array kriteria
+                    const kritData = kritJson.data || kritJson || [];
+
+                    // Ambil data perhitungan (Ini yang sering bikin error)
+                    // Backend mengirim: { success: true, data: { ranking: [], ... } }
+                    // Jadi kita harus ambil calcJson.data
+                    const dataPerhitungan = calcJson.data || calcJson;
+                    const ranking = dataPerhitungan.ranking || [];
+
+                    // Cek jika perhitungan belum ada hasil (ranking kosong)
+                    if (!calcRes.ok || ranking.length === 0) {
+                        throw new Error("Data perhitungan belum tersedia.");
                     }
 
-                    const calcData = await calcRes.json();
-                    const totalAlternatif = (altData.data || altData || []).length;
-                    const totalKriteria = (kritData.data || kritData || []).length;
-                    const ranking = calcData.ranking || [];
+                    // 5. Hitung Summary
+                    const totalAlternatif = altData.length;
+                    const totalKriteria = kritData.length;
                     const peringkatSatu = ranking.find(r => r.rank === 1) || { alternatif_nama: "Belum Ada", nilai: 0 };
 
+                    // 6. Render Konten Utama
                     const dashboardHTML = `
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
-            </div>
-            <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 border-green-500">
-                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Peringkat #1</h3>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white truncate" title="${peringkatSatu.alternatif_nama}">${peringkatSatu.alternatif_nama}</p>
-                    <p class="text-sm text-gray-600 dark:text-gray-300">Skor Akhir: ${peringkatSatu.nilai.toFixed(4)}</p>
-                </div>
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 border-blue-500">
-                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Total Alternatif</h3>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white">${totalAlternatif}</p>
-                    <p class="text-sm text-gray-600 dark:text-gray-300">Total alternatif yang dievaluasi</p>
-                </div>
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 border-yellow-500">
-                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Total Kriteria</h3>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white">${totalKriteria}</p>
-                    <p class="text-sm text-gray-600 dark:text-gray-300">Total kriteria penilaian</p>
-                </div>
-            </div>
+                        <div class="flex justify-between items-center mb-4 animate-fade-in">
+                            <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
+                        </div>
+                        <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 border-green-500 transform hover:-translate-y-1 transition duration-300">
+                                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Peringkat #1 (Juara)</h3>
+                                <div class="flex items-start justify-between">
+                                    <div class="mr-2">
+                                        <p class="text-2xl font-bold text-gray-900 dark:text-white break-words leading-tight" title="${peringkatSatu.alternatif_nama}">
+                                            ${peringkatSatu.alternatif_nama}
+                                        </p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Skor: <span class="font-mono font-bold text-green-600">${peringkatSatu.nilai.toFixed(4)}</span></p>
+                                    </div>
+                                    <div class="bg-green-100 dark:bg-green-900/30 p-3 rounded-full text-green-600 dark:text-green-400 flex-shrink-0">
+                                        <i class="bi bi-trophy-fill text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
 
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Grafik Skor Akhir Alternatif</h3>
-                <div style="height: 350px;">
-                    <canvas id="dashboard-chart"></canvas>
-                </div>
-            </div>
+                            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 border-blue-500 transform hover:-translate-y-1 transition duration-300">
+                                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Alternatif</h3>
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-3xl font-bold text-gray-900 dark:text-white">${totalAlternatif}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Jumlah data saat ini</p>
+                                    </div>
+                                    <div class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                        <i class="bi bi-people-fill text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
 
-            <div class="cetak-sembunyi">
-                <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Aksi Cepat</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    
-                    <button onclick="loadContent('alternatif')" class="bg-indigo-600 text-white p-4 rounded-lg shadow-md hover:bg-indigo-700 transition font-semibold flex items-center justify-center">
-                        <i class="bi bi-people-fill mr-2"></i> Data Alternatif
-                    </button>
+                            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 border-yellow-500 transform hover:-translate-y-1 transition duration-300">
+                                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Kriteria</h3>
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-3xl font-bold text-gray-900 dark:text-white">${totalKriteria}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Syarat penilaian</p>
+                                    </div>
+                                    <div class="bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded-full text-yellow-600 dark:text-yellow-400 flex-shrink-0">
+                                        <i class="bi bi-list-check text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    <button onclick="loadContent('kriteria')" class="bg-gray-600 text-white p-4 rounded-lg shadow-md hover:bg-gray-700 transition font-semibold flex items-center justify-center">
-                        <i class="bi bi-gear-fill mr-2"></i> Atur Kriteria
-                    </button>
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                            <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4 border-b pb-2 border-gray-100 dark:border-gray-700">Grafik Perolehan Skor</h3>
+                            <div style="height: 350px;">
+                                <canvas id="dashboard-chart"></canvas>
+                            </div>
+                        </div>
 
-                    <button onclick="loadContent('penilaian')" class="bg-blue-600 text-white p-4 rounded-lg shadow-md hover:bg-blue-700 transition font-semibold flex items-center justify-center">
-                        <i class="bi bi-pencil-square mr-2"></i> Input Penilaian
-                    </button>
-                    
-                    <button onclick="loadContent('perhitungan')" class="bg-green-600 text-white p-4 rounded-lg shadow-md hover:bg-green-700 transition font-semibold flex items-center justify-center">
-                        <i class="bi bi-bar-chart-line-fill mr-2"></i> Lihat Hasil Detail
-                    </button>
-                    
-                </div>
-            </div>
-            `;
+                        <div class="cetak-sembunyi">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Menu Cepat</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <button onclick="loadContent('alternatif')" class="bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center gap-2 transition group">
+                                    <i class="bi bi-people text-2xl text-indigo-500 group-hover:scale-110 transition-transform"></i>
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Data Alternatif</span>
+                                </button>
+                                <button onclick="loadContent('kriteria')" class="bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center gap-2 transition group">
+                                    <i class="bi bi-sliders text-2xl text-pink-500 group-hover:scale-110 transition-transform"></i>
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Data Kriteria</span>
+                                </button>
+                                <button onclick="loadContent('penilaian')" class="bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center gap-2 transition group">
+                                    <i class="bi bi-pencil-square text-2xl text-blue-500 group-hover:scale-110 transition-transform"></i>
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Input Nilai</span>
+                                </button>
+                                <button onclick="loadContent('perhitungan')" class="bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center gap-2 transition group">
+                                    <i class="bi bi-bar-chart-fill text-2xl text-green-500 group-hover:scale-110 transition-transform"></i>
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Hasil Akhir</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
 
                     container.innerHTML = dashboardHTML;
                     renderDashboardChart(ranking);
 
                 } catch (err) {
                     console.error("Gagal memuat dashboard:", err);
+
+                    // Tampilan Error / Data Belum Siap yang Cantik
                     container.innerHTML = `
-            <h2 class="text-2xl font-bold mb-4 dark:text-white">Dashboard</h2>
-            <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
-            <div class="p-4 bg-yellow-100 text-yellow-800 rounded-lg shadow-md">
-                <strong>Data Perhitungan Belum Siap.</strong><br>
-                <span class="text-sm">Anda perlu mengisi halaman "Nilai Alternatif" terlebih dahulu agar hasil perhitungan bisa tampil di dashboard.</span>
-                <div class="mt-3">
-                    <button onclick="loadContent('alternatif')" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-bold hover:bg-indigo-700 transition">
-                         <i class="bi bi-people-fill mr-1"></i> Ke Data Alternatif
-                    </button>
-                </div>
-            </div>
-        `;
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
+                        </div>
+                        <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Selamat datang, <b>${user.username}</b>!</p>
+                        
+                        <div class="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 p-6 rounded-lg shadow-sm">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <i class="bi bi-info-circle-fill text-yellow-500 text-2xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <h3 class="text-lg font-bold text-yellow-800 dark:text-yellow-200">Data Belum Lengkap</h3>
+                                    <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                                        <p class="mb-2">Sistem belum dapat menampilkan ringkasan karena:</p>
+                                        <ul class="list-disc list-inside space-y-1 ml-1">
+                                            <li>Data Alternatif atau Kriteria mungkin masih kosong.</li>
+                                            <li>Penilaian belum diisi lengkap.</li>
+                                            <li>Tombol "Hitung" di menu Hasil belum ditekan.</li>
+                                        </ul>
+                                    </div>
+                                    <div class="mt-4">
+                                        <button onclick="loadContent('penilaian')" class="text-sm font-bold text-yellow-800 hover:text-yellow-900 dark:text-yellow-200 dark:hover:text-yellow-100 underline">
+                                            Pergi ke Input Penilaian &rarr;
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 }
                 return;
             }
 
             // ======================
-            // DATA ALTERNATIF
+            // DATA ALTERNATIF (UPDATED: SUPPORT SUPERADMIN FILTER)
             // ======================
             if (page === "alternatif") {
+                // 1. Set nama halaman aktif agar fungsi refresh global bekerja
+                currentPageName = "alternatif";
+
                 let allAlternatifData = [];
 
+                // 2. Render Kerangka Halaman
                 container.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 
@@ -319,6 +464,7 @@ window.loadContent = async(page) => {
                 const searchInput = document.getElementById("searchAlt");
                 const badgeTotal = document.getElementById("totalDataBadge");
 
+                // 3. Load Data Awal
                 await loadAlternatifData();
 
                 // === EVENT LISTENERS ===
@@ -336,7 +482,7 @@ window.loadContent = async(page) => {
 
                 btnDeleteAll.addEventListener("click", async() => {
                     if (allAlternatifData.length === 0) return showToast("Data kosong.", "error");
-                    const confirmed = await showConfirm("Hapus Semua?", "PERINGATAN: Semua data alternatif akan dihapus permanen.");
+                    const confirmed = await showConfirm("Hapus Semua?", "PERINGATAN: Semua data alternatif (sesuai tampilan saat ini) akan dihapus permanen.");
                     if (!confirmed) return;
 
                     const originalContent = btnDeleteAll.innerHTML;
@@ -363,18 +509,48 @@ window.loadContent = async(page) => {
                     }
                 });
 
-                // === FUNCTIONS ===
+                // === FUNCTIONS UTAMA ===
+
                 async function loadAlternatifData() {
                     try {
-                        const res = await fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } });
+                        // --- LOGIKA STRICT FILTER SUPERADMIN ---
+                        // Jika login sebagai Superadmin TAPI belum memilih admin di dropdown
+                        if (user.role === 'superadmin' && !selectedFilterId) {
+                            tableContainer.innerHTML = `
+                                <div class="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                                    <div class="bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-full mb-3">
+                                        <i class="bi bi-person-badge text-3xl text-indigo-500"></i>
+                                    </div>
+                                    <p class="text-lg font-bold">Mode Penampil Superadmin</p>
+                                    <p class="text-sm">Silakan pilih <b class="text-indigo-600 dark:text-indigo-400">Target Admin</b> pada menu filter di atas untuk melihat data.</p>
+                                </div>
+                            `;
+                            badgeTotal.innerText = "0";
+                            badgeTotal.classList.add('hidden');
+                            allAlternatifData = []; // Kosongkan data lokal
+                            return;
+                        }
+                        // ---------------------------------------
+
+                        // Tentukan URL: Jika superadmin & ada filter, tambahkan query param
+                        let url = `${API_BASE_URL}/alternatif`;
+                        if (user.role === 'superadmin' && selectedFilterId) {
+                            url += `?filter_id=${selectedFilterId}`;
+                        }
+
+                        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
                         const data = await res.json();
+
+                        // Handle jika response array atau object { data: [] }
                         allAlternatifData = (data.data || data || []).sort((a, b) => a.id - b.id);
+
                         badgeTotal.innerText = allAlternatifData.length;
                         badgeTotal.classList.remove('hidden');
+
                         renderAlternatifTable(allAlternatifData);
                     } catch (err) {
                         console.error(err);
-                        tableContainer.innerHTML = `<div class="p-10 text-center text-red-500">Gagal terhubung ke server.</div>`;
+                        tableContainer.innerHTML = `<div class="p-10 text-center text-red-500">Gagal terhubung ke server.<br><small>${err.message}</small></div>`;
                     }
                 }
 
@@ -421,7 +597,7 @@ window.loadContent = async(page) => {
                 </tr>
             `).join("");
 
-            tableContainer.innerHTML = `
+                    tableContainer.innerHTML = `
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50/80 dark:bg-gray-700/50 backdrop-blur-sm">
                         <tr>
@@ -436,14 +612,14 @@ window.loadContent = async(page) => {
                     </tbody>
                 </table>
             `;
-        }
+                }
 
-        // === MODAL & CRUD (TETAP SAMA) ===
-        window.showAltModal = (data = {}) => {
-            const modal = document.getElementById("modal-container");
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-            modal.innerHTML = `
+                // === MODAL & CRUD (TETAP SAMA) ===
+                window.showAltModal = (data = {}) => {
+                    const modal = document.getElementById("modal-container");
+                    modal.classList.remove("hidden");
+                    modal.classList.add("flex");
+                    modal.innerHTML = `
                   <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-auto transform transition-all duration-300 scale-100 overflow-hidden">
                       <div class="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
                           <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
@@ -476,71 +652,88 @@ window.loadContent = async(page) => {
                       </form>
                   </div>
                 `;
-            document.getElementById("altForm").addEventListener("submit", saveAlt);
-        };
+                    document.getElementById("altForm").addEventListener("submit", saveAlt);
+                };
 
-        window.closeAltModal = () => {
-            document.getElementById("modal-container").classList.add("hidden");
-            document.getElementById("modal-container").innerHTML = "";
-        };
+                window.closeAltModal = () => {
+                    document.getElementById("modal-container").classList.add("hidden");
+                    document.getElementById("modal-container").innerHTML = "";
+                };
 
-        async function saveAlt(e) {
-            e.preventDefault();
-            const id = document.getElementById("altId").value;
-            const payload = {
-                kode_alternatif: document.getElementById("kodeAlt").value,
-                nama_periode: document.getElementById("namaAlt").value,
-                deskripsi: document.getElementById("descAlt").value,
-            };
-            const url = id ? `${API_BASE_URL}/alternatif/${id}` : `${API_BASE_URL}/alternatif`;
-            const method = id ? "PUT" : "POST";
-            try {
-                const res = await fetch(url, {
-                    method,
-                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                    body: JSON.stringify(payload),
-                });
-                const result = await res.json();
-                if (!res.ok) throw new Error(result.message);
-                showToast(result.message || "Berhasil disimpan!");
-                closeAltModal();
-                await loadAlternatifData();
-            } catch (err) {
-                console.error(err);
-                showToast(`Terjadi kesalahan: ${err.message}`, "error");
+                async function saveAlt(e) {
+                    e.preventDefault();
+                    
+                    // Validasi: Superadmin harus pilih admin dulu sebelum nambah data (Opsional, tapi disarankan)
+                    if (user.role === 'superadmin' && !selectedFilterId) {
+                        showToast("Pilih Admin Target terlebih dahulu di menu atas!", "error");
+                        return;
+                    }
+
+                    const id = document.getElementById("altId").value;
+                    const payload = {
+                        kode_alternatif: document.getElementById("kodeAlt").value,
+                        nama_periode: document.getElementById("namaAlt").value,
+                        deskripsi: document.getElementById("descAlt").value,
+                    };
+
+                    // Jika Superadmin sedang memfilter admin tertentu, kirim ID targetnya
+                    if (user.role === 'superadmin' && selectedFilterId) {
+                        payload.target_admin_id = selectedFilterId;
+                    }
+                    
+                    const url = id ? `${API_BASE_URL}/alternatif/${id}` : `${API_BASE_URL}/alternatif`;
+                    const method = id ? "PUT" : "POST";
+                    
+                    try {
+                        const res = await fetch(url, {
+                            method,
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify(payload),
+                        });
+                        const result = await res.json();
+                        if (!res.ok) throw new Error(result.message);
+                        showToast(result.message || "Berhasil disimpan!");
+                        closeAltModal();
+                        await loadAlternatifData();
+                    } catch (err) {
+                        console.error(err);
+                        showToast(`Terjadi kesalahan: ${err.message}`, "error");
+                    }
+                }
+
+                window.editAlt = (data) => showAltModal(data);
+                window.deleteAlt = async (id) => {
+                    const confirmed = await showConfirm("Hapus Data", "Yakin ingin menghapus data alternatif ini?");
+                    if (!confirmed) return;
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/alternatif/${id}`, {
+                            method: "DELETE",
+                            headers: { Authorization: `Bearer ${token}` },
+                        });
+                        const result = await res.json();
+                        if (!res.ok) throw new Error(result.message);
+                        showToast(result.message || "Data berhasil dihapus!");
+                        await loadAlternatifData();
+                    } catch (err) {
+                        console.error(err);
+                        showToast(`Gagal menghapus data: ${err.message}`, "error");
+                    }
+                };
+                return;
             }
-        }
-
-        window.editAlt = (data) => showAltModal(data);
-        window.deleteAlt = async (id) => {
-            const confirmed = await showConfirm("Hapus Data", "Yakin ingin menghapus data alternatif ini?");
-            if (!confirmed) return;
-            try {
-                const res = await fetch(`${API_BASE_URL}/alternatif/${id}`, {
-                    method: "DELETE",
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                const result = await res.json();
-                if (!res.ok) throw new Error(result.message);
-                showToast(result.message || "Data berhasil dihapus!");
-                await loadAlternatifData();
-            } catch (err) {
-                console.error(err);
-                showToast(`Gagal menghapus data: ${err.message}`, "error");
-            }
-        };
-        return;
-    }
     
     // ======================
-    // DATA KRITERIA 
-    // ======================
-    if (page === "kriteria") {
-        let allKriteriaData = []; 
-        window.currentKriteriaId = null;
+            // DATA KRITERIA (UPDATED: SUPPORT SUPERADMIN FILTER)
+            // ======================
+            if (page === "kriteria") {
+                // 1. Set nama halaman aktif agar fungsi refresh global bekerja
+                currentPageName = "kriteria";
+                
+                let allKriteriaData = []; 
+                window.currentKriteriaId = null;
 
-        // 1. RENDER CONTAINER UTAMA
-        container.innerHTML = `
+                // 2. RENDER CONTAINER UTAMA
+                container.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 
                 <div id="mainToolbar" class="p-5 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50/50 dark:bg-gray-800/50">
@@ -581,80 +774,108 @@ window.loadContent = async(page) => {
             </div>
         `;
 
-        const tableContainer = document.getElementById("kritTable");
-        const btnAdd = document.getElementById("btnAddKrit");
-        const btnDeleteAll = document.getElementById("btnDeleteAllKrit");
-        const searchInput = document.getElementById("searchKrit");
-        const badgeTotal = document.getElementById("totalKriteriaBadge");
-        const pageTitle = document.getElementById("pageTitle");
-        const mainToolbar = document.getElementById("mainToolbar");
+                const tableContainer = document.getElementById("kritTable");
+                const btnAdd = document.getElementById("btnAddKrit");
+                const btnDeleteAll = document.getElementById("btnDeleteAllKrit");
+                const searchInput = document.getElementById("searchKrit");
+                const badgeTotal = document.getElementById("totalKriteriaBadge");
+                const pageTitle = document.getElementById("pageTitle");
+                const mainToolbar = document.getElementById("mainToolbar");
 
-        await loadKriteriaData();
-
-        // === EVENT LISTENER UTAMA ===
-        btnAdd.addEventListener("click", () => showKritModal());
-        
-        searchInput.addEventListener("input", (e) => {
-            const keyword = e.target.value.toLowerCase();
-            const filteredData = allKriteriaData.filter(item => 
-                item.kode.toLowerCase().includes(keyword) ||
-                item.nama.toLowerCase().includes(keyword) ||
-                item.tipe.toLowerCase().includes(keyword)
-            );
-            renderKriteriaTable(filteredData);
-        });
-
-        btnDeleteAll.addEventListener("click", async () => {
-            if (allKriteriaData.length === 0) return showToast("Data kosong.", "error");
-            if (!await showConfirm("Hapus Semua?", "PERINGATAN: Semua kriteria DAN sub-kriterianya akan dihapus.")) return;
-
-            const originalContent = btnDeleteAll.innerHTML;
-            btnDeleteAll.disabled = true;
-            btnDeleteAll.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-
-            try {
-                const deletePromises = allKriteriaData.map(item => 
-                    fetch(`${API_BASE_URL}/kriteria/${item.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-                );
-                await Promise.all(deletePromises);
-                showToast("Semua data berhasil di-reset!", "success");
+                // 3. Load Data Awal
                 await loadKriteriaData();
-            } catch (err) {
-                showToast("Gagal menghapus sebagian data.", "error");
-                await loadKriteriaData();
-            } finally {
-                btnDeleteAll.disabled = false;
-                btnDeleteAll.innerHTML = originalContent;
-            }
-        });
 
-        // === FUNGSI LOAD DATA UTAMA ===
-        async function loadKriteriaData() {
-            pageTitle.innerText = "Data Kriteria";
-            mainToolbar.style.display = "flex"; 
-            
-            try {
-                const res = await fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } });
-                const data = await res.json();
-                allKriteriaData = (Array.isArray(data) ? data : data.data || []).sort((a,b) => a.id - b.id);
+                // === EVENT LISTENER UTAMA ===
+                btnAdd.addEventListener("click", () => showKritModal());
                 
-                badgeTotal.innerText = allKriteriaData.length;
-                badgeTotal.classList.remove('hidden');
+                searchInput.addEventListener("input", (e) => {
+                    const keyword = e.target.value.toLowerCase();
+                    const filteredData = allKriteriaData.filter(item => 
+                        item.kode.toLowerCase().includes(keyword) ||
+                        item.nama.toLowerCase().includes(keyword) ||
+                        item.tipe.toLowerCase().includes(keyword)
+                    );
+                    renderKriteriaTable(filteredData);
+                });
 
-                renderKriteriaTable(allKriteriaData);
-            } catch (err) {
-                tableContainer.innerHTML = `<div class="p-10 text-center text-red-500">Gagal memuat data.</div>`;
-            }
-        }
-        window.loadKriteriaTable = loadKriteriaData; 
+                btnDeleteAll.addEventListener("click", async () => {
+                    if (allKriteriaData.length === 0) return showToast("Data kosong.", "error");
+                    if (!await showConfirm("Hapus Semua?", "PERINGATAN: Semua kriteria DAN sub-kriterianya akan dihapus.")) return;
 
-        function renderKriteriaTable(data) {
-            if (!data.length) {
-                tableContainer.innerHTML = `<div class="p-12 text-center text-gray-400">Tidak ada data kriteria.</div>`;
-                return;
-            }
+                    const originalContent = btnDeleteAll.innerHTML;
+                    btnDeleteAll.disabled = true;
+                    btnDeleteAll.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
 
-            const rows = data.map((k, index) => `
+                    try {
+                        const deletePromises = allKriteriaData.map(item => 
+                            fetch(`${API_BASE_URL}/kriteria/${item.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+                        );
+                        await Promise.all(deletePromises);
+                        showToast("Semua data berhasil di-reset!", "success");
+                        await loadKriteriaData();
+                    } catch (err) {
+                        showToast("Gagal menghapus sebagian data.", "error");
+                        await loadKriteriaData();
+                    } finally {
+                        btnDeleteAll.disabled = false;
+                        btnDeleteAll.innerHTML = originalContent;
+                    }
+                });
+
+                // === FUNGSI LOAD DATA UTAMA ===
+                
+                async function loadKriteriaData() {
+                    pageTitle.innerText = "Data Kriteria";
+                    mainToolbar.style.display = "flex"; 
+                    
+                    try {
+                        // --- LOGIKA STRICT FILTER SUPERADMIN ---
+                        if (user.role === 'superadmin' && !selectedFilterId) {
+                            tableContainer.innerHTML = `
+                                <div class="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                                    <div class="bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-full mb-3">
+                                        <i class="bi bi-person-badge text-3xl text-indigo-500"></i>
+                                    </div>
+                                    <p class="text-lg font-bold">Mode Penampil Superadmin</p>
+                                    <p class="text-sm">Silakan pilih <b class="text-indigo-600 dark:text-indigo-400">Target Admin</b> pada menu filter di atas untuk melihat data.</p>
+                                </div>
+                            `;
+                            badgeTotal.innerText = "0";
+                            badgeTotal.classList.add('hidden');
+                            allKriteriaData = []; // Kosongkan data lokal
+                            return;
+                        }
+                        // ---------------------------------------
+
+                        // Tentukan URL: Jika superadmin & ada filter, tambahkan query param
+                        let url = `${API_BASE_URL}/kriteria`;
+                        if (user.role === 'superadmin' && selectedFilterId) {
+                            url += `?filter_id=${selectedFilterId}`;
+                        }
+
+                        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+                        const data = await res.json();
+                        
+                        // Handle jika response array atau object { data: [] }
+                        allKriteriaData = (Array.isArray(data) ? data : data.data || []).sort((a,b) => a.id - b.id);
+                        
+                        badgeTotal.innerText = allKriteriaData.length;
+                        badgeTotal.classList.remove('hidden');
+
+                        renderKriteriaTable(allKriteriaData);
+                    } catch (err) {
+                        tableContainer.innerHTML = `<div class="p-10 text-center text-red-500">Gagal memuat data.<br><small>${err.message}</small></div>`;
+                    }
+                }
+                window.loadKriteriaTable = loadKriteriaData; 
+
+                function renderKriteriaTable(data) {
+                    if (!data.length) {
+                        tableContainer.innerHTML = `<div class="p-12 text-center text-gray-400">Tidak ada data kriteria.</div>`;
+                        return;
+                    }
+
+                    const rows = data.map((k, index) => `
                 <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
                     <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-center w-16 font-mono">${index + 1}</td>
                     <td class="px-6 py-4">
@@ -677,7 +898,7 @@ window.loadContent = async(page) => {
                 </tr>
             `).join("");
 
-            tableContainer.innerHTML = `
+                    tableContainer.innerHTML = `
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50/80 dark:bg-gray-700/50 backdrop-blur-sm">
                         <tr>
@@ -691,181 +912,156 @@ window.loadContent = async(page) => {
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">${rows}</tbody>
                 </table>
             `;
-        }
-
-        // ============================================
-        // FUNGSI LOGIKA SUB KRITERIA 
-        // ============================================
-
-        window.openSubKriteria = async function (id, namaKriteria) {
-            // 1. Simpan state kriteria saat ini
-            window.currentKriteriaId = id;
-            if(namaKriteria) window.currentKriteriaNama = namaKriteria; // Simpan nama agar tidak hilang saat refresh tabel
-            
-            // 2. UI Setup
-            mainToolbar.style.display = "none"; 
-            tableContainer.innerHTML = `<div class="p-10 text-center"><span class="spinner-border text-blue-500"></span> Memuat sub kriteria...</div>`;
-            
-            try {
-                // 3. Fetch Data
-                const res = await fetch(`${API_BASE_URL}/subkriteria?kriteria_id=${id}`, { headers: { Authorization: `Bearer ${token}` } });
-                const data = await res.json();
-                
-                // Simpan data di variabel lokal untuk Sorting & Searching tanpa reload
-                let allSubData = (Array.isArray(data) ? data : data.data || []);
-                
-                // Default Sort (Ascending by Nilai)
-                let isAscending = true;
-                allSubData.sort((a,b) => a.nilai - b.nilai);
-
-                // --- FUNGSI RENDER BARIS TABEL ---
-                const renderSubRows = (subData) => {
-                    if (!subData.length) return `<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="bi bi-list-nested text-3xl mb-2"></i><br>Data tidak ditemukan.</td></tr>`;
-                    
-                    return subData.map((s, i) => `
-                        <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
-                            <td class="px-6 py-4 text-center text-sm text-gray-500 w-16 font-mono">${i + 1}</td>
-                            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">${s.nama}</td>
-                            <td class="px-6 py-4"><span class="inline-block px-2 py-1 text-xs font-bold text-gray-700 bg-gray-100 rounded border border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">${s.nilai}</span></td>
-                            <td class="px-6 py-4 text-sm text-gray-500 italic">${s.keterangan || '-'}</td>
-                            <td class="px-6 py-4 text-right whitespace-nowrap">
-                                <div class="flex justify-end gap-2">
-                                    <button onclick='showSubKritModal(${JSON.stringify({ ...s, kriteria_id: id })})' class="px-4 py-1.5 text-xs font-bold text-white bg-yellow-500 hover:bg-yellow-600 rounded-md shadow-sm transition-colors">Edit</button>
-                                    <button onclick='deleteSubKrit(${s.id}, ${id})' class="px-4 py-1.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-md shadow-sm transition-colors">Hapus</button>
-                                </div>
-                            </td>
-                        </tr>
-                    `).join("");
-                };
-
-                // --- RENDER HEADER & FRAME TABEL ---
-                const subHeader = `
-                    <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center bg-blue-50/50 dark:bg-blue-900/10 gap-4">
-                        <div class="flex items-center gap-4 w-full md:w-auto">
-                            <button onclick="loadKriteriaTable()" class="p-2 rounded-full hover:bg-white dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition shadow-sm" title="Kembali">
-                                <i class="bi bi-arrow-left text-lg"></i>
-                            </button>
-                            <div>
-                                <h3 class="text-lg font-bold text-gray-800 dark:text-white">Sub Kriteria</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Untuk: <b>${window.currentKriteriaNama}</b></p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex flex-col md:flex-row w-full md:w-auto items-center gap-2">
-                            <div class="relative w-full md:w-48">
-                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="bi bi-search text-xs"></i></span>
-                                <input type="text" id="searchSubKrit" placeholder="Cari sub..." class="pl-8 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
-                            </div>
-                            <div class="flex gap-2">
-                                <button id="btnResetSub" class="px-3 py-2 text-sm font-medium text-red-500 bg-white border border-red-300 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-400 transition flex items-center shadow-sm dark:bg-gray-800 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20">
-                                    <i class="bi bi-trash3 mr-1"></i> Reset
-                                </button>
-                                <button onclick='showSubKritModal({ kriteria_id: ${id} })' class="px-3 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition flex items-center">
-                                    <i class="bi bi-plus-lg mr-1"></i> Tambah
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                const renderTable = (rowsHtml) => `
-                    ${subHeader}
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-700/50">
-                            <tr>
-                                <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">No</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nama Sub</th>
-                                
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase cursor-pointer hover:text-blue-600 select-none group" id="sortNilaiHeader">
-                                    Nilai 
-                                    <i id="sortIcon" class="bi bi-sort-numeric-down ml-1 text-gray-400 group-hover:text-blue-600"></i>
-                                </th>
-
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Ket</th>
-                                <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="subTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">${rowsHtml}</tbody>
-                    </table>
-                `;
-
-                // Render Awal
-                tableContainer.innerHTML = renderTable(renderSubRows(allSubData));
-
-                // --- EVENT LISTENERS ---
-
-                // 1. LOGIC SORTING (TANPA RELOAD)
-                const sortHeader = document.getElementById('sortNilaiHeader');
-                const sortIcon = document.getElementById('sortIcon');
-                
-                sortHeader.addEventListener('click', () => {
-                    // Toggle status
-                    isAscending = !isAscending;
-
-                    // Ubah Ikon
-                    if (isAscending) {
-                        sortIcon.className = "bi bi-sort-numeric-down ml-1 text-blue-600";
-                    } else {
-                        sortIcon.className = "bi bi-sort-numeric-up-alt ml-1 text-blue-600";
-                    }
-
-                    // Sorting Array Lokal
-                    allSubData.sort((a, b) => {
-                        return isAscending ? a.nilai - b.nilai : b.nilai - a.nilai;
-                    });
-
-                    // Update Hanya Tbody (Tanpa Fetch Ulang)
-                    document.getElementById('subTableBody').innerHTML = renderSubRows(allSubData);
-                });
-
-                // 2. LOGIC SEARCH (Filter Array Lokal)
-                document.getElementById('searchSubKrit').addEventListener('input', (e) => {
-                    const keyword = e.target.value.toLowerCase();
-                    const filtered = allSubData.filter(s => 
-                        s.nama.toLowerCase().includes(keyword) || 
-                        (s.keterangan && s.keterangan.toLowerCase().includes(keyword))
-                    );
-                    document.getElementById('subTableBody').innerHTML = renderSubRows(filtered);
-                });
-
-                // 3. LOGIC RESET
-                const btnResetSub = document.getElementById('btnResetSub');
-                if(btnResetSub) {
-                    btnResetSub.addEventListener('click', async () => {
-                        if (allSubData.length === 0) return showToast("Data kosong.", "error");
-                        if (!await showConfirm("Reset Sub Kriteria?", `Hapus semua sub kriteria untuk "${window.currentKriteriaNama}"?`)) return;
-
-                        // Loading state tombol
-                        const originalHtml = btnResetSub.innerHTML;
-                        btnResetSub.disabled = true;
-                        btnResetSub.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-
-                        try {
-                            const deletePromises = allSubData.map(item => 
-                                fetch(`${API_BASE_URL}/subkriteria/${item.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-                            );
-                            await Promise.all(deletePromises);
-                            showToast("Sub kriteria berhasil di-reset!", "success");
-                            // Refresh total (karena data habis)
-                            openSubKriteria(id, window.currentKriteriaNama);
-                        } catch (err) {
-                            showToast("Gagal menghapus sebagian data.", "error");
-                            openSubKriteria(id, window.currentKriteriaNama);
-                        }
-                    });
                 }
 
-            } catch (err) {
-                showToast(`Gagal: ${err.message}`, "error");
-            }
-        };
+                // ============================================
+                // FUNGSI LOGIKA SUB KRITERIA (FIXED: PAKAI getApiUrl)
+                // ============================================
+                window.openSubKriteria = async function (id, namaKriteria) {
+                    // 1. Simpan state
+                    window.currentKriteriaId = id;
+                    if(namaKriteria) window.currentKriteriaNama = namaKriteria;
+                    
+                    // 2. UI Setup
+                    const mainToolbar = document.getElementById("mainToolbar");
+                    const tableContainer = document.getElementById("kritTable");
+                    if(mainToolbar) mainToolbar.style.display = "none"; 
+                    tableContainer.innerHTML = `<div class="p-10 text-center"><span class="spinner-border text-blue-500"></span> Memuat sub kriteria...</div>`;
+                    
+                    try {
+                        // 3. FETCH DATA (GUNAKAN getApiUrl AGAR FILTER TERBAWA)
+                        // Ini perbaikan utamanya:
+                        const url = getApiUrl(`/subkriteria?kriteria_id=${id}`);
+                        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+                        const data = await res.json();
+                        
+                        // Simpan data
+                        let allSubData = (Array.isArray(data) ? data : data.data || []);
+                        
+                        // Default Sort
+                        let isAscending = true;
+                        allSubData.sort((a,b) => a.nilai - b.nilai);
 
-        // ============================================
-        // MODAL & CRUD HELPER
-        // ============================================
-        window.showKritModal = (data = {}) => {
-            const modal = document.getElementById("modal-container"); modal.classList.remove("hidden"); modal.classList.add("flex");
-            modal.innerHTML = `
+                        // --- FUNGSI RENDER BARIS TABEL ---
+                        const renderSubRows = (subData) => {
+                            if (!subData || subData.length === 0) {
+                                return `<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="bi bi-folder-x text-3xl mb-2"></i><br>Belum ada data sub kriteria.</td></tr>`;
+                            }
+                            
+                            return subData.map((s, i) => `
+                                <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
+                                    <td class="px-6 py-4 text-center text-sm text-gray-500 w-16 font-mono">${i + 1}</td>
+                                    <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">${s.nama}</td>
+                                    <td class="px-6 py-4"><span class="inline-block px-2 py-1 text-xs font-bold text-gray-700 bg-gray-100 rounded border border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">${s.nilai}</span></td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 italic">${s.keterangan || '-'}</td>
+                                    <td class="px-6 py-4 text-right whitespace-nowrap">
+                                        <div class="flex justify-end gap-2">
+                                            <button onclick='showSubKritModal(${JSON.stringify({ ...s, kriteria_id: id })})' class="px-4 py-1.5 text-xs font-bold text-white bg-yellow-500 hover:bg-yellow-600 rounded-md shadow-sm transition-colors">Edit</button>
+                                            <button onclick='deleteSubKrit(${s.id}, ${id})' class="px-4 py-1.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-md shadow-sm transition-colors">Hapus</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join("");
+                        };
+
+                        // --- RENDER HEADER & FRAME TABEL ---
+                        const subHeader = `
+                            <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center bg-blue-50/50 dark:bg-blue-900/10 gap-4">
+                                <div class="flex items-center gap-4 w-full md:w-auto">
+                                    <button onclick="loadKriteriaTable()" class="p-2 rounded-full hover:bg-white dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition shadow-sm" title="Kembali">
+                                        <i class="bi bi-arrow-left text-lg"></i>
+                                    </button>
+                                    <div>
+                                        <h3 class="text-lg font-bold text-gray-800 dark:text-white">Sub Kriteria</h3>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">Untuk Kriteria: <b>${window.currentKriteriaNama}</b></p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex flex-col md:flex-row w-full md:w-auto items-center gap-2">
+                                    <div class="relative w-full md:w-48">
+                                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="bi bi-search text-xs"></i></span>
+                                        <input type="text" id="searchSubKrit" placeholder="Cari sub..." class="pl-8 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button id="btnResetSub" class="px-3 py-2 text-sm font-medium text-red-500 bg-white border border-red-300 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-400 transition flex items-center shadow-sm dark:bg-gray-800 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20">
+                                            <i class="bi bi-trash3 mr-1"></i> Reset
+                                        </button>
+                                        <button onclick='showSubKritModal({ kriteria_id: ${id} })' class="px-3 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition flex items-center">
+                                            <i class="bi bi-plus-lg mr-1"></i> Tambah
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        const renderTable = (rowsHtml) => `
+                            ${subHeader}
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">No</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nama Sub</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase cursor-pointer hover:text-blue-600 select-none group" id="sortNilaiHeader">
+                                            Nilai <i id="sortIcon" class="bi bi-sort-numeric-down ml-1 text-gray-400 group-hover:text-blue-600"></i>
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Ket</th>
+                                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="subTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">${rowsHtml}</tbody>
+                            </table>
+                        `;
+
+                        tableContainer.innerHTML = renderTable(renderSubRows(allSubData));
+                        
+                        // Event Listeners (Sort, Search, Reset)
+                        const sortHeader = document.getElementById('sortNilaiHeader');
+                        const sortIcon = document.getElementById('sortIcon');
+                        if(sortHeader) {
+                            sortHeader.addEventListener('click', () => {
+                                isAscending = !isAscending;
+                                if (isAscending) { sortIcon.className = "bi bi-sort-numeric-down ml-1 text-blue-600"; } 
+                                else { sortIcon.className = "bi bi-sort-numeric-up-alt ml-1 text-blue-600"; }
+                                allSubData.sort((a, b) => isAscending ? a.nilai - b.nilai : b.nilai - a.nilai);
+                                document.getElementById('subTableBody').innerHTML = renderSubRows(allSubData);
+                            });
+                        }
+                        const searchInp = document.getElementById('searchSubKrit');
+                        if(searchInp) {
+                            searchInp.addEventListener('input', (e) => {
+                                const keyword = e.target.value.toLowerCase();
+                                const filtered = allSubData.filter(s => s.nama.toLowerCase().includes(keyword) || (s.keterangan && s.keterangan.toLowerCase().includes(keyword)));
+                                document.getElementById('subTableBody').innerHTML = renderSubRows(filtered);
+                            });
+                        }
+                        
+                        // Logic Reset Sub
+                        const btnResetSub = document.getElementById('btnResetSub');
+                        if (btnResetSub) {
+                            btnResetSub.addEventListener('click', async () => {
+                                if (allSubData.length === 0) return showToast("Data kosong.", "error");
+                                if (!await showConfirm("Reset Sub Kriteria?", `Hapus semua sub kriteria untuk "${window.currentKriteriaNama}"?`)) return;
+                                try {
+                                    const deletePromises = allSubData.map(item => fetch(`${API_BASE_URL}/subkriteria/${item.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }));
+                                    await Promise.all(deletePromises);
+                                    showToast("Berhasil di-reset!", "success");
+                                    openSubKriteria(id, window.currentKriteriaNama);
+                                } catch (err) { showToast("Gagal reset.", "error"); }
+                            });
+                        }
+
+                    } catch (err) {
+                        showToast(`Gagal memuat sub kriteria: ${err.message}`, "error");
+                        tableContainer.innerHTML = `<div class="p-10 text-center text-red-500">Gagal memuat data.</div>`;
+                    }
+                };
+
+                // ============================================
+                // MODAL & CRUD HELPER
+                // ============================================
+                window.showKritModal = (data = {}) => {
+                    const modal = document.getElementById("modal-container"); modal.classList.remove("hidden"); modal.classList.add("flex");
+                    modal.innerHTML = `
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-auto overflow-hidden">
                     <div class="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/50">
                         <h3 class="font-bold text-gray-800 dark:text-white">${data.id ? "Edit" : "Tambah"} Kriteria</h3>
@@ -882,319 +1078,409 @@ window.loadContent = async(page) => {
                         <div class="pt-4 flex justify-end gap-2"><button type="button" onclick="closeKritModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">Batal</button><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-sm">Simpan</button></div>
                     </form>
                 </div>`;
-            document.getElementById("kritForm").addEventListener("submit", saveKrit);
-        };
-        window.closeKritModal = () => { document.getElementById("modal-container").classList.add("hidden"); document.getElementById("modal-container").innerHTML = ""; };
-        async function saveKrit(e) {
-            e.preventDefault(); const id = document.getElementById("kritId").value;
-            const payload = { kode: document.getElementById("kodeKrit").value, nama: document.getElementById("namaKrit").value, bobot: document.getElementById("bobotKrit").value, tipe: document.getElementById("tipeKrit").value };
-            try {
-                const res = await fetch(id ? `${API_BASE_URL}/kriteria/${id}` : `${API_BASE_URL}/kriteria`, { method: id ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
-                if (!res.ok) throw new Error((await res.json()).message);
-                showToast("Berhasil!"); closeKritModal(); loadKriteriaData();
-            } catch (err) { showToast(err.message, "error"); }
-        }
-        window.deleteKrit = async (id) => { if (await showConfirm("Hapus?", "Yakin?")) { try { await fetch(`${API_BASE_URL}/kriteria/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }); showToast("Terhapus!"); loadKriteriaData(); } catch (e) { showToast(e.message, "error"); } } };
+                    document.getElementById("kritForm").addEventListener("submit", saveKrit);
+                };
+                window.closeKritModal = () => { document.getElementById("modal-container").classList.add("hidden"); document.getElementById("modal-container").innerHTML = ""; };
+                
+                async function saveKrit(e) {
+                    e.preventDefault(); 
+                    
+                    // Validasi Superadmin
+                    if (user.role === 'superadmin' && !selectedFilterId) {
+                        showToast("Pilih Admin Target terlebih dahulu di menu atas!", "error");
+                        return;
+                    }
 
-        window.showSubKritModal = (data = {}) => {
-            const modal = document.getElementById("modal-container"); modal.classList.remove("hidden"); modal.classList.add("flex");
-            const kId = data.kriteria_id || window.currentKriteriaId;
-            modal.innerHTML = `
+                    const id = document.getElementById("kritId").value;
+                    const payload = { 
+                        kode: document.getElementById("kodeKrit").value, 
+                        nama: document.getElementById("namaKrit").value, 
+                        bobot: document.getElementById("bobotKrit").value, 
+                        tipe: document.getElementById("tipeKrit").value 
+                    };
+
+                    // Sisipkan ID target jika Superadmin
+                    if (user.role === 'superadmin' && selectedFilterId) {
+                        payload.target_admin_id = selectedFilterId;
+                    }
+                    
+                    const url = id ? `${API_BASE_URL}/kriteria/${id}` : `${API_BASE_URL}/kriteria`;
+                    const method = id ? "PUT" : "POST";
+
+                    try {
+                        const res = await fetch(url, { method: method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+                        if (!res.ok) throw new Error((await res.json()).message);
+                        showToast("Berhasil!"); closeKritModal(); loadKriteriaData();
+                    } catch (err) { showToast(err.message, "error"); }
+                }
+                
+                window.deleteKrit = async (id) => { 
+                    if (await showConfirm("Hapus?", "Yakin?")) { 
+                        try { 
+                            await fetch(`${API_BASE_URL}/kriteria/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }); 
+                            showToast("Terhapus!"); 
+                            loadKriteriaData(); 
+                        } catch (e) { showToast(e.message, "error"); } 
+                    } 
+                };
+
+                window.showSubKritModal = (data = {}) => {
+                    const modal = document.getElementById("modal-container"); modal.classList.remove("hidden"); modal.classList.add("flex");
+                    const kId = data.kriteria_id || window.currentKriteriaId;
+                    modal.innerHTML = `
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm m-auto overflow-hidden">
                     <div class="p-4 border-b bg-gray-50 dark:bg-gray-700 flex justify-between"><h3 class="font-bold dark:text-white">Sub Kriteria</h3><button onclick="closeSubKritModal()" class="text-2xl">&times;</button></div>
                     <form id="subForm" class="p-5 space-y-3">
-                        <input type="hidden" id="sId" value="${data.id||''}"><input type="hidden" id="kId" value="${kId}">
-                        <input class="w-full border p-2 rounded dark:bg-gray-700 dark:text-white" id="sNama" placeholder="Nama Sub" value="${data.nama||''}" required>
-                        <input class="w-full border p-2 rounded dark:bg-gray-700 dark:text-white" type="number" id="sNilai" placeholder="Nilai" value="${data.nilai||''}" required>
-                        <textarea class="w-full border p-2 rounded dark:bg-gray-700 dark:text-white" id="sKet" placeholder="Keterangan">${data.keterangan||''}</textarea>
+                        <input type="hidden" id="sId" value="${data.id || ''}"><input type="hidden" id="kId" value="${kId}">
+                        <input class="w-full border p-2 rounded dark:bg-gray-700 dark:text-white" id="sNama" placeholder="Nama Sub" value="${data.nama || ''}" required>
+                        <input class="w-full border p-2 rounded dark:bg-gray-700 dark:text-white" type="number" id="sNilai" placeholder="Nilai" value="${data.nilai || ''}" required>
+                        <textarea class="w-full border p-2 rounded dark:bg-gray-700 dark:text-white" id="sKet" placeholder="Keterangan">${data.keterangan || ''}</textarea>
                         <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded font-bold">Simpan</button>
                     </form>
                 </div>`;
-            document.getElementById("subForm").onsubmit = async (e) => {
-                e.preventDefault();
-                const p = { kriteria_id: parseInt(kId), nama: document.getElementById("sNama").value, nilai: parseInt(document.getElementById("sNilai").value), keterangan: document.getElementById("sKet").value };
-                const url = p.id = document.getElementById("sId").value; 
-                try { await fetch(url ? `${API_BASE_URL}/subkriteria/${url}` : `${API_BASE_URL}/subkriteria`, { method: url?"PUT":"POST", headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`}, body:JSON.stringify(p)});
-                closeSubKritModal(); openSubKriteria(kId, document.getElementById("pageTitle").innerText.split(": ")[1] || ""); } catch(err) { showToast(err.message, "error"); }
-            };
-        };
-        window.closeSubKritModal = () => { document.getElementById("modal-container").classList.add("hidden"); document.getElementById("modal-container").innerHTML = ""; };
-        window.deleteSubKrit = async (id, kId) => { if(await showConfirm("Hapus?", "Yakin?")) { try { await fetch(`${API_BASE_URL}/subkriteria/${id}`,{method:"DELETE",headers:{Authorization:`Bearer ${token}`}}); openSubKriteria(kId, document.getElementById("pageTitle").innerText.split(": ")[1] || ""); } catch(e) { showToast(e.message, "error"); } } };
+                    document.getElementById("subForm").onsubmit = async (e) => {
+                        e.preventDefault();
+                        const p = { kriteria_id: parseInt(kId), nama: document.getElementById("sNama").value, nilai: parseInt(document.getElementById("sNilai").value), keterangan: document.getElementById("sKet").value };
 
-        return;
-    }
+                        if (user.role === 'superadmin' && selectedFilterId) {
+                            p.target_admin_id = selectedFilterId;
+                        }
 
-    // ======================
-    // PENILAIAN ALTERNATIF (Custom UI: Tampil Nama Saja saat Dipilih)
-    // ======================
-    if (page === "penilaian") {
-        
-        // 1. Render Skeleton
-        container.innerHTML = `
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden min-h-[400px]">
-                <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Penilaian Alternatif</h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Lengkapi nilai untuk setiap alternatif berdasarkan kriteria.</p>
-                </div>
-                <div id="penilaian-loader" class="flex flex-col items-center justify-center h-64 text-indigo-500">
-                    <span class="spinner-border w-8 h-8 mb-3"></span>
-                    <span class="text-gray-500 dark:text-gray-400 text-sm font-medium">Sedang memuat data...</span>
-                </div>
-                <div id="penilaian-content" class="hidden"></div>
-            </div>
-        `;
-        
-        const loader = document.getElementById("penilaian-loader");
-        const contentDiv = document.getElementById("penilaian-content");
-        
-        try {
-            // 2. Fetch Data
-            const [altRes, kritRes, penRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/alternatif`, { headers: { Authorization: `Bearer ${token}` } }),
-                fetch(`${API_BASE_URL}/kriteria`, { headers: { Authorization: `Bearer ${token}` } }),
-                fetch(`${API_BASE_URL}/penilaian`, { headers: { Authorization: `Bearer ${token}` } }),
-            ]);
+                        const url = p.id = document.getElementById("sId").value;
+                        try { await fetch(url ? `${API_BASE_URL}/subkriteria/${url}` : `${API_BASE_URL}/subkriteria`, { method: url ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(p) });
+                            closeSubKritModal(); openSubKriteria(kId, document.getElementById("pageTitle").innerText.split(": ")[1] || "");
+                        } catch (err) { showToast(err.message, "error"); }
+                    };
+                };
+                window.closeSubKritModal = () => { document.getElementById("modal-container").classList.add("hidden"); document.getElementById("modal-container").innerHTML = ""; };
+                window.deleteSubKrit = async (id, kId) => { if (await showConfirm("Hapus?", "Yakin?")) { try { await fetch(`${API_BASE_URL}/subkriteria/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }); openSubKriteria(kId, document.getElementById("pageTitle").innerText.split(": ")[1] || ""); } catch (e) { showToast(e.message, "error"); } } };
 
-            const altJson = await altRes.json();
-            const kritJson = await kritRes.json();
-            const penJson = await penRes.json();
-
-            const alternatifs = (altJson.data || altJson || []).sort((a, b) => a.id - b.id);
-            const kriterias = (kritJson.data || kritJson || []).sort((a, b) => a.id - b.id);
-            const penilaianData = penJson.data || penJson || [];
-
-            if (kriterias.length === 0 || alternatifs.length === 0) {
-                loader.classList.add('hidden');
-                contentDiv.classList.remove('hidden');
-                contentDiv.innerHTML = `<div class="p-6 text-center text-red-500">Data belum lengkap.</div>`;
                 return;
             }
 
-            // 3. Siapkan Sub Kriteria
-            const subResList = await Promise.all(
-                kriterias.map(k => fetch(`${API_BASE_URL}/subkriteria?kriteria_id=${k.id}`, { headers: { Authorization: `Bearer ${token}` } }))
-            );
-            
-            const subKriteriaMap = new Map();
-            for (let i = 0; i < kriterias.length; i++) {
-                const subJson = await subResList[i].json();
-                // Urutkan: Nilai Terbesar di Atas (Opsional)
-                const subData = (subJson.data || subJson || []).sort((a, b) => b.nilai - a.nilai);
-                subKriteriaMap.set(kriterias[i].id, subData);
-            }
+            // ======================
+            // PENILAIAN ALTERNATIF (FINAL FIX)
+            // ======================
+            if (page === "penilaian") {
+                currentPageName = "penilaian";
 
-            // 4. Mapping Nilai
-            const penilaianMap = new Map();
-            penilaianData.forEach((p) => {
-                if (p.nilai !== undefined) penilaianMap.set(`${p.alternatif_id}-${p.kriteria_id}`, p.nilai);
-            });
-
-            // 5. Build Tabel
-            const tableHeaders = kriterias.map((k) => 
-                `<th class="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[220px] bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">${k.nama}</th>`
-            ).join("");
-            
-            const tableRows = alternatifs.map((a, index) => {
-                const kriteriaCells = kriterias.map((k) => {
-                    const subKriterias = subKriteriaMap.get(k.id) || [];
-                    const currentValue = penilaianMap.get(`${a.id}-${k.id}`);
-                    
-                    // Cari teks pendek untuk nilai yang tersimpan saat ini
-                    let currentShortLabel = "- Pilih -";
-                    
-                    const options = subKriterias.map((s) => {
-                        const isSelected = s.nilai == currentValue ? "selected" : "";
-                        
-                        // Cek jika ini nilai yang terpilih, simpan namanya buat ditampilkan di overlay
-                        if (s.nilai == currentValue) currentShortLabel = s.nama;
-
-                        // Option Tetap Menampilkan Nilai Lengkap agar user tidak bingung saat memilih
-                        return `<option value="${s.nilai}" data-short="${s.nama}" ${isSelected}>${s.nama} (Nilai: ${s.nilai})</option>`;
-                    }).join("");
-
-                    // ID Unik untuk sinkronisasi
-                    const uniqueId = `select-${a.id}-${k.id}`;
-                    const labelId = `label-${a.id}-${k.id}`;
-                    const wrapperId = `wrapper-${a.id}-${k.id}`;
-                    
-                    // --- TRIK UTAMA DISINI ---
-                    // 1. div relative: container pembungkus
-                    // 2. div #label-...: Tampilan palsu (z-index rendah), menampilkan Nama Pendek
-                    // 3. select #select-...: Transparan (opacity-0), ada di atas (z-index tinggi), menampilkan Opsi Lengkap
-                    return `
-                        <td class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 align-middle">
-                            <div class="relative w-full min-w-[180px]" id="${wrapperId}">
-                                
-                                <div class="custom-select-display flex items-center justify-between w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white pointer-events-none">
-                                    <span id="${labelId}" class="truncate mr-2">${currentShortLabel}</span>
-                                    <i class="bi bi-chevron-down text-gray-400 text-xs"></i>
-                                </div>
-
-                                <select 
-                                    id="${uniqueId}"
-                                    class="input-nilai absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                    data-alt-id="${a.id}" 
-                                    data-krit-id="${k.id}"
-                                    data-label-target="${labelId}"
-                                    data-wrapper-target="${wrapperId}"
-                                    required
-                                    onchange="syncSelectDisplay(this)"
-                                >
-                                    <option value="" data-short="- Pilih -">- Pilih -</option>
-                                    ${options}
-                                </select>
-
-                            </div>
-                        </td>
-                    `;
-                }).join("");
-
-                return `
-                    <tr class="hover:bg-indigo-50/30 dark:hover:bg-gray-700/50 transition duration-150 group">
-                        <td class="px-6 py-4 text-center text-sm text-gray-500 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">${index + 1}</td>
-                        <td class="px-6 py-4 whitespace-nowrap border-b border-gray-100 dark:border-gray-700 sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-indigo-50/30 dark:group-hover:bg-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                            <div class="flex flex-col">
-                                <span class="text-sm font-bold text-gray-800 dark:text-white">${a.nama_periode}</span>
-                                <span class="text-xs text-gray-500 truncate max-w-[150px]">${a.deskripsi || '-'}</span>
-                            </div>
-                        </td>
-                        ${kriteriaCells}
-                    </tr>
+                // 1. Render Skeleton
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden min-h-[400px]">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                            <h2 class="text-xl font-bold text-gray-800 dark:text-white">Penilaian Alternatif</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Lengkapi nilai untuk setiap alternatif berdasarkan kriteria.</p>
+                        </div>
+                        <div id="penilaian-loader" class="flex flex-col items-center justify-center h-64 text-indigo-500">
+                            <span class="spinner-border w-8 h-8 mb-3"></span>
+                            <span class="text-gray-500 dark:text-gray-400 text-sm font-medium">Sedang memuat data...</span>
+                        </div>
+                        <div id="penilaian-content" class="hidden"></div>
+                    </div>
                 `;
-            }).join("");
 
-            contentDiv.innerHTML = `
-                <form id="penilaian-form" class="flex flex-col h-full">
-                    <div class="overflow-auto max-h-[65vh] relative">
-                        <table class="min-w-full border-collapse">
-                            <thead class="sticky top-0 z-20 shadow-sm">
-                                <tr>
-                                    <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase w-16 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">No</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase min-w-[200px] sticky left-0 z-30 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Alternatif</th>
-                                    ${tableHeaders}
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                ${tableRows}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="p-5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-end items-center z-30">
-                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-8 rounded-lg shadow-lg transition duration-200 flex justify-center items-center gap-2 transform active:scale-95">
-                            <i class="bi bi-floppy2-fill"></i> Simpan Perubahan
-                        </button>
-                    </div>
-                </form>
-            `;
-
-            // === FUNGSI SINKRONISASI TAMPILAN ===
-            // Dipanggil saat user memilih opsi baru
-            window.syncSelectDisplay = (selectElem) => {
-                const labelId = selectElem.getAttribute('data-label-target');
-                const wrapperId = selectElem.getAttribute('data-wrapper-target');
-                const labelElem = document.getElementById(labelId);
-                const wrapperElem = document.getElementById(wrapperId);
-                const displayDiv = wrapperElem.querySelector('.custom-select-display');
-
-                // Ambil option yang dipilih
-                const selectedOption = selectElem.options[selectElem.selectedIndex];
-                const shortText = selectedOption.getAttribute('data-short') || "- Pilih -";
-
-                // Update teks overlay
-                if(labelElem) labelElem.innerText = shortText;
-
-                // Hapus border merah jika sudah dipilih
-                if(selectElem.value !== "") {
-                    displayDiv.classList.remove('border-red-500', 'bg-red-50');
-                    displayDiv.classList.add('border-gray-300', 'bg-white');
-                }
-            };
-
-            loader.classList.add('hidden');
-            contentDiv.classList.remove('hidden');
-
-            // === EVENT LISTENER SUBMIT ===
-            document.getElementById("penilaian-form").addEventListener("submit", async (e) => {
-                e.preventDefault();
-                const btn = e.target.querySelector('button[type="submit"]');
-                const selects = e.target.querySelectorAll(".input-nilai");
-                
-                let isValid = true;
-                let emptyCount = 0;
-                const payload = [];
-
-                // Loop untuk validasi dan ambil data
-                selects.forEach((select) => {
-                    const nilai = select.value;
-                    const wrapperId = select.getAttribute('data-wrapper-target');
-                    const wrapperElem = document.getElementById(wrapperId);
-                    const displayDiv = wrapperElem.querySelector('.custom-select-display');
-
-                    // Reset Style Dulu
-                    displayDiv.classList.remove('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200');
-                    displayDiv.classList.add('border-gray-300', 'bg-white');
-
-                    if (!nilai || nilai === "") {
-                        isValid = false;
-                        emptyCount++;
-                        // Beri border merah pada OVERLAY (karena select asli invisible)
-                        displayDiv.classList.remove('border-gray-300', 'bg-white');
-                        displayDiv.classList.add('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200');
-                    } else {
-                        payload.push({
-                            alternatif_id: parseInt(select.dataset.altId),
-                            kriteria_id: parseInt(select.dataset.kritId),
-                            nilai: parseFloat(nilai),
-                        });
-                    }
-                });
-
-                if (!isValid) {
-                    showToast(`Gagal! Ada ${emptyCount} kolom yang belum diisi.`, "error");
-                    // Scroll ke error pertama
-                    const firstError = document.querySelector('.custom-select-display.border-red-500');
-                    if(firstError) firstError.scrollIntoView({behavior: "smooth", block: "center"});
-                    return;
-                }
-
-                btn.disabled = true;
-                const originalHtml = btn.innerHTML;
-                btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Menyimpan...`;
+                const loader = document.getElementById("penilaian-loader");
+                const contentDiv = document.getElementById("penilaian-content");
 
                 try {
-                    const res = await fetch(`${API_BASE_URL}/penilaian/save-all`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                        body: JSON.stringify(payload),
+                    // --- LOGIKA STRICT FILTER ---
+                    if (user.role === 'superadmin' && !selectedFilterId) {
+                        loader.classList.add('hidden');
+                        contentDiv.classList.remove('hidden');
+                        contentDiv.innerHTML = `
+                            <div class="flex flex-col items-center justify-center h-64 text-gray-500">
+                                <div class="bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-full mb-3">
+                                    <i class="bi bi-person-badge text-3xl text-indigo-500"></i>
+                                </div>
+                                <p class="text-lg font-bold">Mode Penampil Superadmin</p>
+                                <p class="text-sm">Silakan pilih <b class="text-indigo-600 dark:text-indigo-400">Target Admin</b> pada menu filter di atas untuk mengelola penilaian.</p>
+                            </div>`;
+                        return;
+                    }
+
+                    // 2. Fetch Data Utama
+                    const [altRes, kritRes, penRes] = await Promise.all([
+                        fetch(getApiUrl('/alternatif'), { headers: { Authorization: `Bearer ${token}` } }),
+                        fetch(getApiUrl('/kriteria'), { headers: { Authorization: `Bearer ${token}` } }),
+                        fetch(getApiUrl('/penilaian'), { headers: { Authorization: `Bearer ${token}` } }),
+                    ]);
+
+                    const altJson = await altRes.json();
+                    const kritJson = await kritRes.json();
+                    const penJson = await penRes.json();
+
+                    const alternatifs = (altJson.data || altJson || []).sort((a, b) => a.id - b.id);
+                    const kriterias = (kritJson.data || kritJson || []).sort((a, b) => a.id - b.id);
+                    const penilaianData = penJson.data || penJson || [];
+
+                    if (kriterias.length === 0 || alternatifs.length === 0) {
+                        loader.classList.add('hidden');
+                        contentDiv.classList.remove('hidden');
+                        contentDiv.innerHTML = `<div class="p-10 text-center text-red-500 flex flex-col items-center"><i class="bi bi-exclamation-circle text-4xl mb-2"></i><p>Data Alternatif atau Kriteria masih kosong.</p></div>`;
+                        return;
+                    }
+
+                    // 3. SIAPKAN SUB KRITERIA (FIXED: GUNAKAN getApiUrl)
+                    // Ini bagian paling penting yang tadi salah
+                    const subResList = await Promise.all(
+                        kriterias.map(k => {
+                            // getApiUrl akan otomatis menambahkan ?filter_id=... jika Superadmin
+                            return fetch(getApiUrl(`/subkriteria?kriteria_id=${k.id}`), { 
+                                headers: { Authorization: `Bearer ${token}` } 
+                            });
+                        })
+                    );
+
+                    const subKriteriaMap = new Map();
+                    for (let i = 0; i < kriterias.length; i++) {
+                        const subJson = await subResList[i].json();
+                        // Urutkan: Nilai Terbesar di Atas
+                        const subData = (subJson.data || subJson || []).sort((a, b) => b.nilai - a.nilai);
+                        subKriteriaMap.set(kriterias[i].id, subData);
+                    }
+
+                    // 4. Mapping Nilai yang Sudah Ada
+                    const penilaianMap = new Map();
+                    penilaianData.forEach((p) => {
+                        if (p.nilai !== undefined) penilaianMap.set(`${p.alternatif_id}-${p.kriteria_id}`, p.nilai);
                     });
-                    const result = await res.json();
-                    if (!res.ok) throw new Error(result.message);
-                    
-                    showToast("Penilaian berhasil disimpan!", "success");
+
+                    // 5. Build Header Tabel
+                    const tableHeaders = kriterias.map((k) => 
+                        `<th class="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[220px] bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                            <div class="flex flex-col">
+                                <span>${k.nama}</span>
+                                <span class="text-[10px] font-normal text-gray-400 capitalize">${k.tipe} (${k.bobot}%)</span>
+                            </div>
+                        </th>`
+                    ).join("");
+
+                    // 6. Build Rows Tabel
+                    const tableRows = alternatifs.map((a, index) => {
+                        const kriteriaCells = kriterias.map((k) => {
+                            const subKriterias = subKriteriaMap.get(k.id) || [];
+                            const currentValue = penilaianMap.get(`${a.id}-${k.id}`);
+                            
+                            let currentShortLabel = "- Pilih -";
+                            
+                            const options = subKriterias.map((s) => {
+                                const isSelected = s.nilai == currentValue ? "selected" : "";
+                                if (s.nilai == currentValue) currentShortLabel = s.nama;
+                                return `<option value="${s.nilai}" data-short="${s.nama}" ${isSelected}>${s.nama} (Nilai: ${s.nilai})</option>`;
+                            }).join("");
+
+                            // JIKA SUB KRITERIA KOSONG -> TAMPILKAN INPUT MANUAL (FALLBACK)
+                            if (subKriterias.length === 0) {
+                                return `
+                                    <td class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 align-middle">
+                                        <input type="number" 
+                                            class="input-nilai w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                            data-alt-id="${a.id}" 
+                                            data-krit-id="${k.id}"
+                                            value="${currentValue || ''}"
+                                            placeholder="Input Nilai"
+                                        >
+                                    </td>`;
+                            }
+
+                            // JIKA ADA SUB KRITERIA -> TAMPILKAN DROPDOWN CUSTOM
+                            const uniqueId = `select-${a.id}-${k.id}`;
+                            const labelId = `label-${a.id}-${k.id}`;
+                            const wrapperId = `wrapper-${a.id}-${k.id}`;
+                            
+                            return `
+                                <td class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 align-middle">
+                                    <div class="relative w-full min-w-[180px]" id="${wrapperId}">
+                                        
+                                        <div class="custom-select-display flex items-center justify-between w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white pointer-events-none transition-colors">
+                                            <span id="${labelId}" class="truncate mr-2">${currentShortLabel}</span>
+                                            <i class="bi bi-chevron-down text-gray-400 text-xs"></i>
+                                        </div>
+
+                                        <select 
+                                            id="${uniqueId}"
+                                            class="input-nilai absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                            data-alt-id="${a.id}" 
+                                            data-krit-id="${k.id}"
+                                            data-label-target="${labelId}"
+                                            data-wrapper-target="${wrapperId}"
+                                            required
+                                            onchange="syncSelectDisplay(this)"
+                                        >
+                                            <option value="" data-short="- Pilih -">- Pilih -</option>
+                                            ${options}
+                                        </select>
+
+                                    </div>
+                                </td>
+                            `;
+                        }).join("");
+
+                        return `
+                            <tr class="hover:bg-indigo-50/30 dark:hover:bg-gray-700/50 transition duration-150 group">
+                                <td class="px-6 py-4 text-center text-sm text-gray-500 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">${index + 1}</td>
+                                <td class="px-6 py-4 whitespace-nowrap border-b border-gray-100 dark:border-gray-700 sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-indigo-50/30 dark:group-hover:bg-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                    <div class="flex flex-col">
+                                        <span class="text-sm font-bold text-gray-800 dark:text-white">${a.nama_periode}</span>
+                                        <span class="text-xs text-gray-500 truncate max-w-[150px]">${a.deskripsi || '-'}</span>
+                                    </div>
+                                </td>
+                                ${kriteriaCells}
+                            </tr>
+                        `;
+                    }).join("");
+
+                    contentDiv.innerHTML = `
+                        <form id="penilaian-form" class="flex flex-col h-full">
+                            <div class="overflow-auto max-h-[65vh] relative custom-scrollbar">
+                                <table class="min-w-full border-collapse">
+                                    <thead class="sticky top-0 z-20 shadow-sm">
+                                        <tr>
+                                            <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase w-16 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">No</th>
+                                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase min-w-[200px] sticky left-0 z-30 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Alternatif</th>
+                                            ${tableHeaders}
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                        ${tableRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="p-5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-end items-center z-30 sticky bottom-0">
+                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-8 rounded-lg shadow-lg transition duration-200 flex justify-center items-center gap-2 transform active:scale-95">
+                                    <i class="bi bi-floppy2-fill"></i> Simpan Perubahan
+                                </button>
+                            </div>
+                        </form>
+                    `;
+
+                    // === Helper UI Select ===
+                    window.syncSelectDisplay = (selectElem) => {
+                        const labelId = selectElem.getAttribute('data-label-target');
+                        const wrapperId = selectElem.getAttribute('data-wrapper-target');
+                        const labelElem = document.getElementById(labelId);
+                        const wrapperElem = document.getElementById(wrapperId);
+                        const displayDiv = wrapperElem.querySelector('.custom-select-display');
+
+                        const selectedOption = selectElem.options[selectElem.selectedIndex];
+                        const shortText = selectedOption.getAttribute('data-short') || "- Pilih -";
+
+                        if(labelElem) labelElem.innerText = shortText;
+
+                        if(selectElem.value !== "") {
+                            displayDiv.classList.remove('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200');
+                            displayDiv.classList.add('border-gray-300', 'bg-white');
+                            displayDiv.classList.add('border-indigo-500', 'ring-1', 'ring-indigo-200');
+                        }
+                    };
+
+                    loader.classList.add('hidden');
+                    contentDiv.classList.remove('hidden');
+
+                    // === HANDLE SUBMIT ===
+                    document.getElementById("penilaian-form").addEventListener("submit", async (e) => {
+                        e.preventDefault();
+                        const btn = e.target.querySelector('button[type="submit"]');
+                        const selects = e.target.querySelectorAll(".input-nilai");
+                        
+                        if (user.role === 'superadmin' && !selectedFilterId) {
+                            showToast("Pilih Admin Target terlebih dahulu!", "error");
+                            return;
+                        }
+
+                        let isValid = true;
+                        let emptyCount = 0;
+                        const payload = [];
+
+                        selects.forEach((select) => {
+                            const nilai = select.value;
+                            const wrapperId = select.getAttribute('data-wrapper-target');
+
+                            if(wrapperId) { // Custom select logic
+                                const wrapperElem = document.getElementById(wrapperId);
+                                const displayDiv = wrapperElem.querySelector('.custom-select-display');
+                                displayDiv.classList.remove('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200');
+                                displayDiv.classList.add('border-gray-300', 'bg-white');
+
+                                if (!nilai || nilai === "") {
+                                    isValid = false;
+                                    emptyCount++;
+                                    displayDiv.classList.remove('border-gray-300', 'bg-white');
+                                    displayDiv.classList.add('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200');
+                                } else {
+                                    payload.push({
+                                        alternatif_id: parseInt(select.dataset.altId),
+                                        kriteria_id: parseInt(select.dataset.kritId),
+                                        nilai: parseFloat(nilai),
+                                    });
+                                }
+                            } else { // Fallback input number
+                                if (!nilai || nilai === "") {
+                                    isValid = false;
+                                    emptyCount++;
+                                    select.classList.add('border-red-500', 'bg-red-50');
+                                } else {
+                                    select.classList.remove('border-red-500', 'bg-red-50');
+                                    payload.push({
+                                        alternatif_id: parseInt(select.dataset.altId),
+                                        kriteria_id: parseInt(select.dataset.kritId),
+                                        nilai: parseFloat(nilai),
+                                    });
+                                }
+                            }
+                        });
+
+                        if (!isValid) {
+                            showToast(`Gagal! Ada ${emptyCount} kolom yang belum diisi.`, "error");
+                            return;
+                        }
+
+                        btn.disabled = true;
+                        const originalHtml = btn.innerHTML;
+                        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Menyimpan...`;
+
+                        try {
+                            // PENTING: Gunakan getApiUrl jika Superadmin perlu simpan atas nama filter_id (tergantung backend)
+                            // Tapi biasanya backend penilaian/save-all menggunakan data dari payload
+                            // Namun untuk amannya gunakan getApiUrl agar session konsisten
+                            const res = await fetch(getApiUrl('/penilaian/save-all'), {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                body: JSON.stringify(payload),
+                            });
+                            const result = await res.json();
+                            if (!res.ok) throw new Error(result.message);
+                            
+                            showToast("Penilaian berhasil disimpan!", "success");
+                        } catch (err) {
+                            showToast(`Error: ${err.message}`, "error");
+                        } finally {
+                            btn.disabled = false;
+                            btn.innerHTML = originalHtml;
+                        }
+                    });
+
                 } catch (err) {
-                    showToast(`Error: ${err.message}`, "error");
-                } finally {
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
+                    console.error("Error:", err);
+                    loader.classList.add('hidden');
+                    contentDiv.classList.remove('hidden');
+                    contentDiv.innerHTML = `<div class="p-10 text-center text-red-500">Gagal memuat halaman.<br><small>${err.message}</small></div>`;
                 }
-            });
+                return;
+            }
 
-        } catch (err) {
-            console.error("Error:", err);
-            loader.classList.add('hidden');
-            contentDiv.classList.remove('hidden');
-            contentDiv.innerHTML = `<div class="p-10 text-center text-red-500">Gagal memuat halaman.</div>`;
-        }
-        return;
-    }
+             // ======================
+            // PERHITUNGAN SAW (UPDATED: SUPPORT SUPERADMIN FILTER & KOMENTAR LOGIKA)
+            // ======================
+            if (page === "perhitungan") {
+                // 1. Set nama halaman aktif untuk fitur refresh
+                currentPageName = "perhitungan";
 
-    // ======================
-    // PERHITUNGAN SAW (FIXED: Analisis + Cetak + Grafik)
-    // ======================
-    if (page === "perhitungan") {
-        
-        container.innerHTML = `
+                // 2. Render UI (Tampilan Awal)
+                // Kita siapkan CSS khusus cetak dan struktur tab navigasi
+                container.innerHTML = `
             <style>
+                /* CSS KHUSUS CETAK (Agar rapi saat di-print) */
                 @media print {
                     body * { visibility: hidden; }
                     #content-container, #content-container * { visibility: visible; }
@@ -1256,14 +1542,17 @@ window.loadContent = async(page) => {
                 </div>
 
                 <div id="calcContent" class="p-6 flex-1 bg-gray-50/30 dark:bg-gray-900/20 relative">
+                    
                     <div id="state-initial" class="flex flex-col items-center justify-center h-64 text-center text-gray-400 no-print">
                         <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-full mb-3"><i class="bi bi-bar-chart-steps text-3xl"></i></div>
-                        <p class="font-medium">Data belum diproses.</p>
+                        <p class="font-medium">Data belum diproses. Klik "Mulai Hitung".</p>
                     </div>
+
                     <div id="state-loading" class="hidden flex flex-col items-center justify-center h-64 text-center text-indigo-500 no-print">
                         <span class="spinner-border w-8 h-8 mb-3"></span>
                         <p class="font-bold animate-pulse">Sedang melakukan kalkulasi...</p>
                     </div>
+
                     <div id="state-result" class="hidden space-y-8">
                         
                         <div id="tab-matriks" class="tab-pane hidden">
@@ -1349,52 +1638,56 @@ window.loadContent = async(page) => {
             </div>
         `;
 
-        window.printReport = (withChart) => {
-            const body = document.body;
-            if (withChart) { body.classList.remove('hide-chart-on-print'); } else { body.classList.add('hide-chart-on-print'); }
-            if(myWeightedChart) myWeightedChart.resize();
-            setTimeout(() => window.print(), 300);
-        };
+                // 3. Helper Functions (Cetak & Switch Tab)
+                window.printReport = (withChart) => {
+                    const body = document.body;
+                    if (withChart) { body.classList.remove('hide-chart-on-print'); } else { body.classList.add('hide-chart-on-print'); }
+                    if (myWeightedChart) myWeightedChart.resize();
+                    setTimeout(() => window.print(), 300);
+                };
 
-        window.switchTab = (targetId) => {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                const isActive = btn.dataset.target === targetId;
-                btn.classList.toggle('border-indigo-500', isActive);
-                btn.classList.toggle('text-indigo-600', isActive);
-                btn.classList.toggle('dark:text-indigo-400', isActive);
-                btn.classList.toggle('border-transparent', !isActive);
-                btn.classList.toggle('text-gray-500', !isActive);
-            });
-            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.add('hidden'));
-            document.getElementById(targetId).classList.remove('hidden');
-        };
+                window.switchTab = (targetId) => {
+                    document.querySelectorAll('.tab-btn').forEach(btn => {
+                        const isActive = btn.dataset.target === targetId;
+                        // Ubah style tombol aktif
+                        btn.classList.toggle('border-indigo-500', isActive);
+                        btn.classList.toggle('text-indigo-600', isActive);
+                        btn.classList.toggle('dark:text-indigo-400', isActive);
+                        btn.classList.toggle('border-transparent', !isActive);
+                        btn.classList.toggle('text-gray-500', !isActive);
+                    });
+                    // Sembunyikan semua tab content, tampilkan target
+                    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.add('hidden'));
+                    document.getElementById(targetId).classList.remove('hidden');
+                };
 
-        // --- FUNGSI 1: Render Kartu Juara per Kriteria ---
-        window.renderBestCriteriaCards = (data) => {
-            const container = document.getElementById('juara-kriteria-container');
-            if (!container) return;
-            container.innerHTML = '';
+                // 4. Logika Render "Kartu Juara" (Insight Data)
+                window.renderBestCriteriaCards = (data) => {
+                    const container = document.getElementById('juara-kriteria-container');
+                    if (!container) return;
+                    container.innerHTML = '';
 
-            const kriteria = data.kriteriaData;
-            const values = data.initialValues;
+                    const kriteria = data.kriteriaData;
+                    const values = data.initialValues;
 
-            kriteria.forEach(k => {
-                let bestAlt = null;
-                let bestVal = (k.tipe.toLowerCase() === 'benefit') ? -Infinity : Infinity;
+                    kriteria.forEach(k => {
+                        let bestAlt = null;
+                        // Benefit: Cari Max, Cost: Cari Min
+                        let bestVal = (k.tipe.toLowerCase() === 'benefit') ? -Infinity : Infinity;
 
-                values.forEach(row => {
-                    const val = parseFloat(row[k.kode]);
-                    if (k.tipe.toLowerCase() === 'benefit') {
-                        if (val > bestVal) { bestVal = val; bestAlt = row.alternatif_nama; }
-                    } else {
-                        if (val < bestVal) { bestVal = val; bestAlt = row.alternatif_nama; }
-                    }
-                });
+                        values.forEach(row => {
+                            const val = parseFloat(row[k.kode]);
+                            if (k.tipe.toLowerCase() === 'benefit') {
+                                if (val > bestVal) { bestVal = val; bestAlt = row.alternatif_nama; }
+                            } else {
+                                if (val < bestVal) { bestVal = val; bestAlt = row.alternatif_nama; }
+                            }
+                        });
 
-                const borderClass = k.tipe.toLowerCase() === 'benefit' ? 'border-green-500' : 'border-orange-500';
-                const icon = k.tipe.toLowerCase() === 'benefit' ? 'bi-graph-up-arrow text-green-500' : 'bi-graph-down-arrow text-orange-500';
+                        const borderClass = k.tipe.toLowerCase() === 'benefit' ? 'border-green-500' : 'border-orange-500';
+                        const icon = k.tipe.toLowerCase() === 'benefit' ? 'bi-graph-up-arrow text-green-500' : 'bi-graph-down-arrow text-orange-500';
 
-                container.innerHTML += `
+                        container.innerHTML += `
                     <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border-l-4 ${borderClass} relative overflow-hidden group hover:shadow-md transition">
                         <div class="absolute right-2 top-2 opacity-10 group-hover:opacity-20 transition">
                             <i class="bi ${icon} text-4xl"></i>
@@ -1403,43 +1696,46 @@ window.loadContent = async(page) => {
                         <h4 class="text-lg font-bold text-gray-800 dark:text-white truncate" title="${bestAlt}">${bestAlt}</h4>
                         <div class="flex justify-between items-end mt-2">
                             <span class="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">Nilai: ${bestVal}</span>
-                            <span class="text-[10px] text-${k.tipe === 'Benefit'?'green':'orange'}-500 font-bold border border-${k.tipe === 'Benefit'?'green':'orange'}-200 px-1 rounded">${k.tipe}</span>
+                            <span class="text-[10px] text-${k.tipe === 'Benefit' ? 'green' : 'orange'}-500 font-bold border border-${k.tipe === 'Benefit' ? 'green' : 'orange'}-200 px-1 rounded">${k.tipe}</span>
                         </div>
                     </div>
                 `;
-            });
-        };
+                    });
+                };
 
-        // --- FUNGSI 2: Buka Modal Detail & Gambar Radar ---
-        window.openDetailAnalysis = (altId) => {
-            if (!globalCalculationData) {
-                showToast("Data perhitungan tidak ditemukan. Silakan hitung ulang.", "error");
-                return;
-            }
+                // 5. Logika Buka Modal Detail (Radar Chart)
+                window.openDetailAnalysis = (altId) => {
+                    if (!globalCalculationData) {
+                        showToast("Data perhitungan tidak ditemukan. Silakan hitung ulang.", "error");
+                        return;
+                    }
 
-            const altName = globalCalculationData.ranking.find(r => r.alternatif_id == altId).alternatif_nama;
-            const normRow = globalCalculationData.normalizedValues.find(r => r.alternatif_id == altId);
-            const initRow = globalCalculationData.initialValues.find(r => r.alternatif_id == altId);
-            const kriteria = globalCalculationData.kriteriaData;
+                    // Ambil data spesifik alternatif ini
+                    const altName = globalCalculationData.ranking.find(r => r.alternatif_id == altId).alternatif_nama;
+                    const normRow = globalCalculationData.normalizedValues.find(r => r.alternatif_id == altId);
+                    const initRow = globalCalculationData.initialValues.find(r => r.alternatif_id == altId);
+                    const kriteria = globalCalculationData.kriteriaData;
 
-            document.getElementById('modal-detail-title').innerText = altName;
-            document.getElementById('modal-detail-analisis').classList.remove('hidden');
-            document.getElementById('modal-detail-analisis').classList.add('flex');
+                    document.getElementById('modal-detail-title').innerText = altName;
+                    document.getElementById('modal-detail-analisis').classList.remove('hidden');
+                    document.getElementById('modal-detail-analisis').classList.add('flex');
 
-            const listContainer = document.getElementById('modal-detail-list');
-            listContainer.innerHTML = '';
+                    const listContainer = document.getElementById('modal-detail-list');
+                    listContainer.innerHTML = '';
 
-            kriteria.forEach(k => {
-                const nVal = normRow[k.kode]; // 0 - 1
-                const origVal = initRow[k.kode];
-                
-                let status, color;
-                if (nVal >= 0.8) { status = "Sangat Unggul"; color = "text-green-600 bg-green-50 border-green-200"; }
-                else if (nVal >= 0.6) { status = "Baik"; color = "text-blue-600 bg-blue-50 border-blue-200"; }
-                else if (nVal >= 0.4) { status = "Cukup"; color = "text-yellow-600 bg-yellow-50 border-yellow-200"; }
-                else { status = "Lemah"; color = "text-red-600 bg-red-50 border-red-200"; }
+                    // Generate List Kekuatan/Kelemahan
+                    kriteria.forEach(k => {
+                        const nVal = normRow[k.kode]; // Nilai Normalisasi (0 - 1)
+                        const origVal = initRow[k.kode]; // Nilai Asli
 
-                listContainer.innerHTML += `
+                        // Tentukan status berdasarkan skor normalisasi
+                        let status, color;
+                        if (nVal >= 0.8) { status = "Sangat Unggul"; color = "text-green-600 bg-green-50 border-green-200"; }
+                        else if (nVal >= 0.6) { status = "Baik"; color = "text-blue-600 bg-blue-50 border-blue-200"; }
+                        else if (nVal >= 0.4) { status = "Cukup"; color = "text-yellow-600 bg-yellow-50 border-yellow-200"; }
+                        else { status = "Lemah"; color = "text-red-600 bg-red-50 border-red-200"; }
+
+                        listContainer.innerHTML += `
                     <li class="flex items-center justify-between p-3 rounded-lg border ${color} dark:bg-gray-800 dark:border-gray-600">
                         <div>
                             <span class="block text-xs font-bold text-gray-500 uppercase">${k.nama}</span>
@@ -1448,161 +1744,208 @@ window.loadContent = async(page) => {
                         <div class="text-right">
                             <span class="block text-xs font-bold ${color.split(' ')[0]}">${status}</span>
                             <div class="w-20 h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                                <div class="h-full bg-current opacity-70" style="width: ${nVal*100}%"></div>
+                                <div class="h-full bg-current opacity-70" style="width: ${nVal * 100}%"></div>
                             </div>
                         </div>
                     </li>
                 `;
-            });
+                    });
 
-            const ctx = document.getElementById('radarChartCanvas').getContext('2d');
-            if (myRadarChart) myRadarChart.destroy();
+                    // Gambar Radar Chart dengan Chart.js
+                    const ctx = document.getElementById('radarChartCanvas').getContext('2d');
+                    if (myRadarChart) myRadarChart.destroy(); // Hapus chart lama agar tidak numpuk
 
-            const labels = kriteria.map(k => k.nama);
-            const dataValues = kriteria.map(k => normRow[k.kode]);
+                    const labels = kriteria.map(k => k.nama);
+                    const dataValues = kriteria.map(k => normRow[k.kode]);
 
-            myRadarChart = new Chart(ctx, {
-                type: 'radar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Performa (Normalisasi 0-1)',
-                        data: dataValues,
-                        fill: true,
-                        backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                        borderColor: 'rgb(99, 102, 241)',
-                        pointBackgroundColor: 'rgb(99, 102, 241)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgb(99, 102, 241)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        r: {
-                            angleLines: { color: 'rgba(0,0,0,0.1)' },
-                            grid: { color: 'rgba(0,0,0,0.1)' },
-                            pointLabels: {
-                                font: { size: 11, weight: 'bold' },
-                                color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#4b5563'
+                    myRadarChart = new Chart(ctx, {
+                        type: 'radar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Performa (Normalisasi 0-1)',
+                                data: dataValues,
+                                fill: true,
+                                backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                                borderColor: 'rgb(99, 102, 241)',
+                                pointBackgroundColor: 'rgb(99, 102, 241)',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: 'rgb(99, 102, 241)'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                r: {
+                                    angleLines: { color: 'rgba(0,0,0,0.1)' },
+                                    grid: { color: 'rgba(0,0,0,0.1)' },
+                                    pointLabels: {
+                                        font: { size: 11, weight: 'bold' },
+                                        color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#4b5563'
+                                    },
+                                    suggestedMin: 0,
+                                    suggestedMax: 1
+                                }
                             },
-                            suggestedMin: 0,
-                            suggestedMax: 1
+                            plugins: { legend: { display: false } }
                         }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        };
-
-        const btnRun = document.getElementById("run-saw-btn");
-        btnRun.addEventListener("click", async () => {
-            document.getElementById("state-initial").classList.add("hidden");
-            document.getElementById("state-result").classList.add("hidden");
-            document.getElementById("state-loading").classList.remove("hidden");
-            btnRun.disabled = true;
-            btnRun.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Memproses...`;
-            try {
-                const res = await fetch(`${API_BASE_URL}/perhitungan/hitung`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.message);
-                
-                renderAllTables(data); // Render semua tabel dan grafik
-                
-                document.getElementById("state-loading").classList.add("hidden");
-                document.getElementById("state-result").classList.remove("hidden");
-                switchTab('tab-ranking'); 
-                showToast("Perhitungan Selesai!", "success");
-            } catch (err) {
-                showToast(err.message, "error");
-                document.getElementById("state-loading").classList.add("hidden");
-                document.getElementById("state-initial").classList.remove("hidden");
-            } finally {
-                btnRun.disabled = false;
-                btnRun.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Hitung Ulang`;
-            }
-        });
-
-        function renderAllTables(data) {
-            // === PERBAIKAN PENTING: SIMPAN DATA KE VARIABEL GLOBAL ===
-            globalCalculationData = data; 
-            // =========================================================
-
-            const { kriteriaData, initialValues, normalizedValues, weightedNormalizedValues, ranking } = data;
-            const headers = kriteriaData.map(k => `<th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50 dark:bg-gray-700 dark:text-gray-300">${k.nama} (${k.kode})</th>`).join('');
-            const commonHeader = `<thead class="bg-gray-50 dark:bg-gray-700"><tr><th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase w-10">No</th><th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase w-48">Alternatif</th>${headers}</tr></thead>`;
-            
-            const createRows = (dataset, isRanking = false) => dataset.map((row, i) => {
-                let cells = kriteriaData.map(k => `<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 font-mono">${(row[k.kode]||0).toFixed(3)}</td>`).join('');
-                return `<tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50"><td class="px-4 py-3 text-center text-sm text-gray-500">${isRanking ? row.rank : i+1}</td><td class="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white">${row.alternatif_nama}</td>${cells}</tr>`;
-            }).join('');
-
-            document.getElementById('table-matriks').innerHTML = commonHeader + `<tbody>${createRows(initialValues)}</tbody>`;
-            document.getElementById('table-norm').innerHTML = commonHeader + `<tbody>${createRows(normalizedValues)}</tbody>`;
-            document.getElementById('table-weight').innerHTML = commonHeader + `<tbody>${createRows(weightedNormalizedValues)}</tbody>`;
-
-            // Render Table Ranking dengan Tombol Aksi
-            const rankingRows = ranking.map(r => `
-                <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-green-50 dark:hover:bg-green-900/20 ${r.rank === 1 ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500' : ''}">
-                    <td class="px-6 py-4 text-center"><span class="rank-badge w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${r.rank <= 3 ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'}">${r.rank}</span></td>
-                    <td class="px-6 py-4 font-bold text-gray-800 dark:text-white">
-                        ${r.alternatif_nama}
-                        ${r.rank === 1 ? '<i class="bi bi-star-fill text-yellow-400 ml-2"></i>' : ''}
-                    </td>
-                    <td class="px-6 py-4 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400 text-lg">${r.nilai.toFixed(4)}</td>
-                    
-                    <td class="px-6 py-4 text-right no-print">
-                        <button onclick="openDetailAnalysis(${r.alternatif_id})" class="text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded-full font-bold transition flex items-center justify-end gap-1 ml-auto">
-                            <i class="bi bi-search"></i> Analisa
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-
-            document.getElementById('table-ranking').innerHTML = `<thead class="bg-gray-50 dark:bg-gray-700"><tr><th class="px-6 py-3 text-center w-20">Rank</th><th class="px-6 py-3 text-left">Alternatif</th><th class="px-6 py-3 text-right">Total Skor (V)</th><th class="px-6 py-3 text-right no-print">Detail</th></tr></thead><tbody>${rankingRows}</tbody>`;
-            
-            renderMiniChart(data);
-            
-            // Panggil Fungsi Render Kartu Juara
-            renderBestCriteriaCards(data);
-        }
-
-        function renderMiniChart(fullData) {
-            const ctx = document.getElementById('miniChart');
-            if (myWeightedChart) myWeightedChart.destroy();
-            const { kriteriaData, weightedNormalizedValues } = fullData;
-            const labels = kriteriaData.map(k => k.nama);
-            const datasets = weightedNormalizedValues.map((alt, index) => {
-                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
-                const color = colors[index % colors.length];
-                return {
-                    label: alt.alternatif_nama,
-                    data: kriteriaData.map(k => alt[k.kode]),
-                    borderColor: color,
-                    backgroundColor: color + '33',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    borderWidth: 2
+                    });
                 };
-            });
-            myWeightedChart = new Chart(ctx, {
-                type: 'line',
-                data: { labels: labels, datasets: datasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', padding: 10, cornerRadius: 6 } },
-                    scales: { y: { beginAtZero: true, grid: { borderDash: [5, 5] } }, x: { grid: { display: false } } }
+
+                // 6. EVENT LISTENER: TOMBOL MULAI HITUNG (FIXED VARIABLE NAME)
+                const btnRun = document.getElementById("run-saw-btn");
+                btnRun.addEventListener("click", async () => {
+                    
+                    // --- VALIDASI STRICT SUPERADMIN ---
+                    if (user.role === 'superadmin' && !selectedFilterId) {
+                        showToast("Mohon pilih Admin Target terlebih dahulu di menu atas!", "error");
+                        return;
+                    }
+
+                    // Tampilkan Loading
+                    document.getElementById("state-initial").classList.add("hidden");
+                    document.getElementById("state-result").classList.add("hidden");
+                    document.getElementById("state-loading").classList.remove("hidden");
+                    
+                    btnRun.disabled = true;
+                    btnRun.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Memproses...`;
+
+                    try {
+                        // 1. Request ke Backend
+                        const res = await fetch(getApiUrl('/perhitungan/hitung'), { 
+                            method: "POST", 
+                            headers: { Authorization: `Bearer ${token}` } 
+                        });
+                        
+                        // 2. Ambil JSON (Simpan di variabel bernama 'result')
+                        const result = await res.json(); 
+                        
+                        // 3. Cek Status HTTP
+                        if (!res.ok) throw new Error(result.message || "Gagal menghitung.");
+
+                        // 4. Ambil Data Inti (Cek apakah dibungkus 'data' atau tidak)
+                        //    Backend Anda mengirim: { success: true, data: { ... } }
+                        const dataPerhitungan = result.data || result;
+
+                        // 5. Validasi Struktur Data sebelum Render (Mencegah error 'map')
+                        if (!dataPerhitungan.kriteriaData || !Array.isArray(dataPerhitungan.kriteriaData)) {
+                             throw new Error("Data hasil perhitungan kosong atau format salah.");
+                        }
+
+                        // 6. Render Tabel
+                        renderAllTables(dataPerhitungan); 
+
+                        // 7. Tampilkan Hasil
+                        document.getElementById("state-loading").classList.add("hidden");
+                        document.getElementById("state-result").classList.remove("hidden");
+                        switchTab('tab-ranking'); 
+                        showToast("Perhitungan Selesai!", "success");
+
+                    } catch (err) {
+                        console.error(err);
+                        showToast(err.message, "error");
+                        
+                        // Reset tampilan ke awal jika error
+                        document.getElementById("state-loading").classList.add("hidden");
+                        document.getElementById("state-initial").classList.remove("hidden");
+                    } finally {
+                        btnRun.disabled = false;
+                        btnRun.innerHTML = `<i class="bi bi-cpu-fill"></i> Mulai Hitung`;
+                    }
+                });
+
+                // 7. FUNGSI RENDER SEMUA TABEL
+                function renderAllTables(data) {
+                    // Simpan data ke variabel global agar bisa dipakai di Modal Detail
+                    globalCalculationData = data;
+
+                    const { kriteriaData, initialValues, normalizedValues, weightedNormalizedValues, ranking } = data;
+                    
+                    // Buat Header Tabel (Dinamis sesuai kriteria)
+                    const headers = kriteriaData.map(k => `<th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50 dark:bg-gray-700 dark:text-gray-300">${k.nama} (${k.kode})</th>`).join('');
+                    const commonHeader = `<thead class="bg-gray-50 dark:bg-gray-700"><tr><th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase w-10">No</th><th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase w-48">Alternatif</th>${headers}</tr></thead>`;
+
+                    // Helper untuk membuat baris tabel
+                    const createRows = (dataset, isRanking = false) => dataset.map((row, i) => {
+                        let cells = kriteriaData.map(k => `<td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 font-mono">${(row[k.kode] || 0).toFixed(3)}</td>`).join('');
+                        return `<tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50"><td class="px-4 py-3 text-center text-sm text-gray-500">${isRanking ? row.rank : i + 1}</td><td class="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white">${row.alternatif_nama}</td>${cells}</tr>`;
+                    }).join('');
+
+                    // Isi Tabel 1, 2, 3
+                    document.getElementById('table-matriks').innerHTML = commonHeader + `<tbody>${createRows(initialValues)}</tbody>`;
+                    document.getElementById('table-norm').innerHTML = commonHeader + `<tbody>${createRows(normalizedValues)}</tbody>`;
+                    document.getElementById('table-weight').innerHTML = commonHeader + `<tbody>${createRows(weightedNormalizedValues)}</tbody>`;
+
+                    // Isi Tabel Ranking (Spesial: Ada Tombol Detail)
+                    const rankingRows = ranking.map(r => `
+                        <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-green-50 dark:hover:bg-green-900/20 ${r.rank === 1 ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500' : ''}">
+                            <td class="px-6 py-4 text-center"><span class="rank-badge w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${r.rank <= 3 ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'}">${r.rank}</span></td>
+                            <td class="px-6 py-4 font-bold text-gray-800 dark:text-white">
+                                ${r.alternatif_nama}
+                                ${r.rank === 1 ? '<i class="bi bi-star-fill text-yellow-400 ml-2"></i>' : ''}
+                            </td>
+                            <td class="px-6 py-4 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400 text-lg">${r.nilai.toFixed(4)}</td>
+                            
+                            <td class="px-6 py-4 text-right no-print">
+                                <button onclick="openDetailAnalysis(${r.alternatif_id})" class="text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded-full font-bold transition flex items-center justify-end gap-1 ml-auto">
+                                    <i class="bi bi-search"></i> Analisa
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+
+                    document.getElementById('table-ranking').innerHTML = `<thead class="bg-gray-50 dark:bg-gray-700"><tr><th class="px-6 py-3 text-center w-20">Rank</th><th class="px-6 py-3 text-left">Alternatif</th><th class="px-6 py-3 text-right">Total Skor (V)</th><th class="px-6 py-3 text-right no-print">Detail</th></tr></thead><tbody>${rankingRows}</tbody>`;
+
+                    renderMiniChart(data);
+                    renderBestCriteriaCards(data);
                 }
-            });
-        }
-        return;
-    }
+
+                // 8. Logika Render Grafik Garis (Mini Chart)
+                function renderMiniChart(fullData) {
+                    const ctx = document.getElementById('miniChart');
+                    if (myWeightedChart) myWeightedChart.destroy();
+                    
+                    const { kriteriaData, weightedNormalizedValues } = fullData;
+                    const labels = kriteriaData.map(k => k.nama);
+                    
+                    const datasets = weightedNormalizedValues.map((alt, index) => {
+                        const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+                        const color = colors[index % colors.length];
+                        return {
+                            label: alt.alternatif_nama,
+                            data: kriteriaData.map(k => alt[k.kode]),
+                            borderColor: color,
+                            backgroundColor: color + '33',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        };
+                    });
+
+                    myWeightedChart = new Chart(ctx, {
+                        type: 'line',
+                        data: { labels: labels, datasets: datasets },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: { 
+                                legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }, 
+                                tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', padding: 10, cornerRadius: 6 } 
+                            },
+                            scales: { 
+                                y: { beginAtZero: true, grid: { borderDash: [5, 5] } }, 
+                                x: { grid: { display: false } } 
+                            }
+                        }
+                    });
+                }
+                return;
+            }
 
     // ======================
     // BACKUP DATABASE (DENGAN PROTEKSI PASSWORD DI AWAL)

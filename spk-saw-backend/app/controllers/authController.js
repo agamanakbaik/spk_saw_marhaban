@@ -160,3 +160,18 @@ exports.changeGatePassword = async(req, res) => {
         res.status(500).json({ message: "Gagal memperbarui password." });
     }
 };
+
+exports.getListAdmin = async(req, res) => {
+    try {
+        // Panggil fungsi model yang baru kita buat di atas
+        const rows = await AdminModel.findAllExceptSuperadmin();
+
+        res.json({
+            success: true,
+            data: rows
+        });
+    } catch (error) {
+        console.error("Gagal ambil list admin:", error);
+        res.status(500).json({ message: error.message });
+    }
+};

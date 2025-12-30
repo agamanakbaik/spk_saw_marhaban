@@ -1,16 +1,18 @@
 /**
  * MODEL: SubKriteriaModel.js
- * Menangani operasi CRUD untuk tabel sub_kriterias dengan FILTER ADMIN_ID.
+ * Menangani operasi CRUD untuk tabel sub_kriterias.
+ * UPDATED: Support Superadmin Editing & Viewing.
  */
 const db = require('../../config/db');
 
 class SubKriteriaModel {
 
-    // READ: Mendapatkan SEMUA sub kriteria MILIK USER LOGIN
-    static async findAll(adminId) {
+    // READ: Mendapatkan SEMUA sub kriteria (Filtered)
+    static async findAll(filterId) {
         try {
+            // Karena Controller strict, filterId pasti ada
             const sql = "SELECT id, kriteria_id, nama, nilai, keterangan FROM sub_kriterias WHERE admin_id = ? ORDER BY kriteria_id ASC, nilai DESC";
-            const [rows] = await db.query(sql, [adminId]);
+            const [rows] = await db.query(sql, [filterId]);
             return rows;
         } catch (error) {
             console.error("Error finding all SubKriterias:", error);
@@ -18,12 +20,12 @@ class SubKriteriaModel {
         }
     }
 
-    // READ: Mendapatkan sub kriteria berdasarkan ID Kriteria & User
-    static async findByKriteriaId(kriteriaId, adminId) {
+    // READ: Mendapatkan sub kriteria berdasarkan ID Kriteria & Target Admin
+    static async findByKriteriaId(kriteriaId, targetAdminId) {
         try {
-            // Tambahkan AND admin_id = ?
+            // Filter berdasarkan kriteria_id DAN admin_id yang ditargetkan
             const sql = "SELECT id, kriteria_id, nama, nilai, keterangan FROM sub_kriterias WHERE kriteria_id = ? AND admin_id = ? ORDER BY nilai DESC";
-            const [rows] = await db.query(sql, [kriteriaId, adminId]);
+            const [rows] = await db.query(sql, [kriteriaId, targetAdminId]);
             return rows;
         } catch (error) {
             console.error("Error finding SubKriterias by Kriteria ID:", error);
@@ -31,10 +33,9 @@ class SubKriteriaModel {
         }
     }
 
-    // CREATE: Menambah sub kriteria baru dengan admin_id
+    // CREATE: Menambah sub kriteria baru
     static async create(adminId, kriteria_id, nama, nilai, keterangan) {
         try {
-            // Masukkan admin_id ke database
             const sql = "INSERT INTO sub_kriterias (admin_id, kriteria_id, nama, nilai, keterangan) VALUES (?, ?, ?, ?, ?)";
             const [result] = await db.query(sql, [adminId, kriteria_id, nama, nilai, keterangan]);
             return { id: result.insertId, adminId, kriteria_id, nama, nilai, keterangan };
@@ -47,11 +48,19 @@ class SubKriteriaModel {
         }
     }
 
-    // READ: Mendapatkan sub kriteria berdasarkan ID & User
-    static async findById(id, adminId) {
+    // READ: Detail by ID (Cek Role)
+    static async findById(id, userId, role) {
         try {
-            const sql = "SELECT id, kriteria_id, nama, nilai, keterangan FROM sub_kriterias WHERE id = ? AND admin_id = ?";
-            const [rows] = await db.query(sql, [id, adminId]);
+            let sql = "SELECT id, kriteria_id, nama, nilai, keterangan FROM sub_kriterias WHERE id = ?";
+            let params = [id];
+
+            // Jika BUKAN Superadmin, kunci hanya lihat punya sendiri
+            if (role !== 'superadmin') {
+                sql += " AND admin_id = ?";
+                params.push(userId);
+            }
+
+            const [rows] = await db.query(sql, params);
             return rows[0] || null;
         } catch (error) {
             console.error("Error finding SubKriteria by ID:", error);
@@ -59,12 +68,19 @@ class SubKriteriaModel {
         }
     }
 
-    // UPDATE: Mengubah data sub kriteria MILIK USER LOGIN
-    static async update(id, adminId, nama, nilai, keterangan) {
+    // UPDATE: Edit (Cek Role)
+    static async update(id, userId, nama, nilai, keterangan, role) {
         try {
-            // Tambahkan AND admin_id = ?
-            const sql = "UPDATE sub_kriterias SET nama = ?, nilai = ?, keterangan = ? WHERE id = ? AND admin_id = ?";
-            const [result] = await db.query(sql, [nama, nilai, keterangan, id, adminId]);
+            let sql = "UPDATE sub_kriterias SET nama = ?, nilai = ?, keterangan = ? WHERE id = ?";
+            let params = [nama, nilai, keterangan, id];
+
+            // Jika BUKAN Superadmin, kunci edit hanya punya sendiri
+            if (role !== 'superadmin') {
+                sql += " AND admin_id = ?";
+                params.push(userId);
+            }
+
+            const [result] = await db.query(sql, params);
 
             if (result.affectedRows === 0) {
                 return null;
@@ -76,12 +92,19 @@ class SubKriteriaModel {
         }
     }
 
-    // DELETE: Menghapus sub kriteria MILIK USER LOGIN
-    static async delete(id, adminId) {
+    // DELETE: Hapus (Cek Role)
+    static async delete(id, userId, role) {
         try {
-            // Tambahkan AND admin_id = ?
-            const sql = "DELETE FROM sub_kriterias WHERE id = ? AND admin_id = ?";
-            const [result] = await db.query(sql, [id, adminId]);
+            let sql = "DELETE FROM sub_kriterias WHERE id = ?";
+            let params = [id];
+
+            // Jika BUKAN Superadmin, kunci hapus hanya punya sendiri
+            if (role !== 'superadmin') {
+                sql += " AND admin_id = ?";
+                params.push(userId);
+            }
+
+            const [result] = await db.query(sql, params);
             return result.affectedRows > 0;
         } catch (error) {
             console.error("Error deleting SubKriteria:", error);
